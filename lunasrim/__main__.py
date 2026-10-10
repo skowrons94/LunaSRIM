@@ -1,4 +1,8 @@
-"""Command line interface: ``python -m lunasrim TRIM.IN [-o DIR] [-n N]``"""
+"""Command line interface.
+
+``python -m lunasrim TRIM.IN [-o DIR] [-n N]``   TRIM calculation
+``python -m lunasrim SR.IN [-o DIR]``            stopping / range table (SR module)
+"""
 import argparse
 import os
 import sys
@@ -11,14 +15,22 @@ from .srim import run_trim
 def main(argv=None):
     p = argparse.ArgumentParser(
         prog='lunasrim',
-        description='Run a SRIM-2013 TRIM calculation (TRIM.IN file) with the Python engine.')
-    p.add_argument('trim_in', help='TRIM.IN input file')
+        description='Run a SRIM-2013 TRIM calculation (TRIM.IN) or stopping/range table (SR.IN) in Python.')
+    p.add_argument('trim_in', help='TRIM.IN (or SR.IN) input file')
     p.add_argument('-o', '--output', default='SRIM Outputs',
                    help='directory for the output files (default: "SRIM Outputs")')
     p.add_argument('-n', '--number-ions', type=int, default=None,
                    help='number of ions (default: the number given in TRIM.IN)')
     p.add_argument('-q', '--quiet', action='store_true', help='no progress output')
     a = p.parse_args(argv)
+    with open(a.trim_in, 'rb') as fh:
+        head = fh.read(40).decode('latin-1')
+    if head.startswith('---Stopping'):
+        from . import sr
+        out = sr.run(a.trim_in, None if a.output == 'SRIM Outputs' else a.output)
+        if not a.quiet:
+            print('stopping table written to %s' % out)
+        return 0
     ti = TrimInput.read(a.trim_in)
     n = int(ti.number_ions if a.number_ions is None else a.number_ions)
     t0 = time.time()

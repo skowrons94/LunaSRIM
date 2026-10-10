@@ -1,0 +1,16 @@
+---Stopping/Range Input Data (Number-format: Period = Decimal Point)
+---Output File Name
+"LiLiF.txt"
+---Ion(Z), Ion Mass(u)
+3   7.016
+---Target Data: (Solid=0,Gas=1), Density(g/cm3), Compound Corr.
+0    2.635    1
+---Number of Target Elements
+ 2 
+---Target Elements: (Z), Target name, Stoich, Target Mass(u)
+3   "Lithium"   1   6.941
+9   "Fluorine"   1   18.998
+---Output Stopping Units (1-8)
+ 2
+---Ion Energy : E-Min(keV), E-Max(keV)
+ 5    50000

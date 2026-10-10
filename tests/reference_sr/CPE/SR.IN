@@ -1,0 +1,16 @@
+---Stopping/Range Input Data (Number-format: Period = Decimal Point)
+---Output File Name
+"CPE.txt"
+---Ion(Z), Ion Mass(u)
+6   12
+---Target Data: (Solid=0,Gas=1), Density(g/cm3), Compound Corr.
+0    0.93    1
+---Number of Target Elements
+ 2 
+---Target Elements: (Z), Target name, Stoich, Target Mass(u)
+6   "Carbon"   1   12.011
+1   "Hydrogen"   2   1.008
+---Output Stopping Units (1-8)
+ 5
+---Ion Energy : E-Min(keV), E-Max(keV)
+ 1    1000000

@@ -1,0 +1,15 @@
+---Stopping/Range Input Data (Number-format: Period = Decimal Point)
+---Output File Name
+"FeFe.txt"
+---Ion(Z), Ion Mass(u)
+26   55.935
+---Target Data: (Solid=0,Gas=1), Density(g/cm3), Compound Corr.
+0    7.866    1
+---Number of Target Elements
+ 1 
+---Target Elements: (Z), Target name, Stoich, Target Mass(u)
+26   "Iron"   1   55.845
+---Output Stopping Units (1-8)
+ 5
+---Ion Energy : E-Min(keV), E-Max(keV)
+ 20000    50

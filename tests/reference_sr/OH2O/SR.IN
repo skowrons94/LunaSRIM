@@ -1,0 +1,29 @@
+---Stopping/Range Input Data (Number-format: Period = Decimal Point)
+---Output File Name
+OH2O_out.txt
+---Ion(Z), Ion Mass(u)
+8 15.999
+---Target Data: (Solid=0,Gas=1), Density(g/cm3), Compound Corr.
+1 0.001 0.9
+---Number of Target Elements
+2
+---Target Elements: (Z), Target name, Stoich, Target Mass(u)
+1 "H" 2 1.008
+8 "O" 1 15.999
+---Output Stopping Units (1-8)
+7
+---Ion Energy : E-Min(keV), E-Max(keV)
+0 0
+0.5
+1.0
+3.0
+10.0
+30.0
+100.0
+300.0
+1000.0
+3000.0
+9999.0
+10001.0
+30000.0
+100000.0

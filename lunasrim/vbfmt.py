@@ -214,6 +214,8 @@ def vb_format(x, fmt, single=False):
     parts = _parse(sec)
     out = ''
     ad = abs(d)
+    if any(kind == 'lit' and '%' in text for kind, text in parts):
+        ad = ad * 100
     for kind, text in parts:
         if kind == 'lit':
             out += text

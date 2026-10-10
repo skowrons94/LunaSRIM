@@ -1,0 +1,25 @@
+---Stopping/Range Input Data (Number-format: Period = Decimal Point)
+---Output File Name
+"XeList.txt"
+---Ion(Z), Ion Mass(u)
+54   131.9
+---Target Data: (Solid=0,Gas=1), Density(g/cm3), Compound Corr.
+0    3.97    0.95
+---Number of Target Elements
+ 2 
+---Target Elements: (Z), Target name, Stoich, Target Mass(u)
+13   "Aluminum"   2   26.982
+8   "Oxygen"   3   15.999
+---Output Stopping Units (1-8)
+ 1
+---Ion Energy : E-Min(keV), E-Max(keV)
+ 0    0
+1
+2.5
+10
+100
+1000
+5000
+20000
+100000
+0

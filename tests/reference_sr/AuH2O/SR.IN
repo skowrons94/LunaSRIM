@@ -1,0 +1,16 @@
+---Stopping/Range Input Data (Number-format: Period = Decimal Point)
+---Output File Name
+"AuH2O.txt"
+---Ion(Z), Ion Mass(u)
+79   196.97
+---Target Data: (Solid=0,Gas=1), Density(g/cm3), Compound Corr.
+0    1    0.92
+---Number of Target Elements
+ 2 
+---Target Elements: (Z), Target name, Stoich, Target Mass(u)
+1   "Hydrogen"   2   1.008
+8   "Oxygen"   1   15.999
+---Output Stopping Units (1-8)
+ 8
+---Ion Energy : E-Min(keV), E-Max(keV)
+ 0.001    5000

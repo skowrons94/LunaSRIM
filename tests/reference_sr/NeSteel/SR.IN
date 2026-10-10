@@ -1,0 +1,17 @@
+---Stopping/Range Input Data (Number-format: Period = Decimal Point)
+---Output File Name
+"NeSteel.txt"
+---Ion(Z), Ion Mass(u)
+10   19.992
+---Target Data: (Solid=0,Gas=1), Density(g/cm3), Compound Corr.
+0    7.9    1
+---Number of Target Elements
+ 3 
+---Target Elements: (Z), Target name, Stoich, Target Mass(u)
+26   "Iron"   0.7   55.845
+24   "Chromium"   0.2   51.996
+28   "Nickel"   0.1   58.693
+---Output Stopping Units (1-8)
+ 2
+---Ion Energy : E-Min(keV), E-Max(keV)
+ 3    3000
