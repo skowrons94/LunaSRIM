@@ -74,6 +74,7 @@ class TrimEngine(object):
         self.z_of = [ti.ion_z] + [e.z for e in ti.elements]
         self.ncx = self.ncy = self.ncz = self.nsine = 0.0
         self.tal = TrimTally(t.nel, t.nlay, log)
+        self.out = None              # TrimOutput writing the SRIM Outputs files
         self.invbinw = 1 / self.binw
 
     STACK = 200000
@@ -130,8 +131,8 @@ class TrimEngine(object):
         w = t.strag_low[layer] * e
         bohr = t.bohr[layer]
         if w > bohr:
-            m = t.mass[p]
-            q = 1 - 1 / (1 + e / ((m * 1000) * 931494)) ** 2
+            m1000 = t.mass1000[p]          # Single for the ion (VB Single*Integer)
+            q = 1 - 1 / (1 + e / (m1000 * 931494)) ** 2
             w = bohr * ((1 / q - 0.5) / (1 / q - 1))
         r = self.rnd('45df02')
         strag = ((r - 0.5) * w) * _sqrt(length)
@@ -313,7 +314,7 @@ class TrimEngine(object):
         return psi, phi, rth, rphi, tt
 
     @staticmethod
-    def new_direction(psi, phi, cx, cy, cz, sine):
+    def new_direction(psi, phi, cx, cy, cz, sine, single=False):
         cpsi = _cos(psi)
         spsi = _sin(psi)
         cphi = _cos(phi)
@@ -325,8 +326,13 @@ class TrimEngine(object):
         else:
             q = spsi / sine
             t1 = cpsi * cx + (spsi * cphi) * sine
-            t2 = cpsi * cy - q * (((cy * cx) * cphi) - cz * sphi)
-            t3 = cpsi * cz - q * (((cz * cx) * cphi) + cy * sphi)
+            if single:
+                # recoil cosines are VB Singles: Single*Single stays Single
+                t2 = cpsi * cy - q * ((f32(cy * cx) * cphi) - cz * sphi)
+                t3 = cpsi * cz - q * ((f32(cz * cx) * cphi) + cy * sphi)
+            else:
+                t2 = cpsi * cy - q * (((cy * cx) * cphi) - cz * sphi)
+                t3 = cpsi * cz - q * (((cz * cx) * cphi) + cy * sphi)
         nrm = _sqrt((t1 ** 2 + t2 ** 2) + t3 ** 2)
         c1 = t1 / nrm
         return c1, t2 / nrm, t3 / nrm, _sqrt(abs(1 - c1 * c1))
@@ -488,7 +494,7 @@ class TrimEngine(object):
                 rz[k1] = rz[k]
                 rlay_[k1] = rl
                 rtyp[k1] = rt
-                c1, c2, c3, c4 = self.new_direction(psi, phi, rcx[k], rcy[k], rcz[k], rsin[k])
+                c1, c2, c3, c4 = self.new_direction(psi, phi, rcx[k], rcy[k], rcz[k], rsin[k], True)
                 rcx[k1] = f32(c1)
                 rcy[k1] = f32(c2)
                 rcz[k1] = f32(c3)
@@ -733,6 +739,9 @@ class TrimEngine(object):
             tal.g230 = tal.g230 + 1
             tal.d994.add(1, rt + 1)
             tal.d968.set((tal.d968.get(rt + 1) + self.r_e[k]) - self.t.surface[rt], rt + 1)
+            if self.out is not None and self.ti.file_sputtered > 0:
+                self.out.sputtered(self.ion_number, self.z_of[rt], self.r_e[k], self.r_x[k], self.r_y[k],
+                                   self.r_z[k], self.r_cx[k], self.r_cy[k], self.r_cz[k])
 
     def on_recoil_move(self, k, rt, rl, de):
         """0x456370 RECMOVEDATA: electronic loss of a recoil"""
@@ -820,13 +829,19 @@ class TrimEngine(object):
 
     def on_backscatter(self, st):
         self.tal.n_back += 1
+        if self.out is not None:
+            self.out.backscattered(self.ion_number, st)
 
     def on_transmit(self, st):
         self.tal.n_trans += 1
+        if self.out is not None:
+            self.out.transmitted(self.ion_number, st)
 
     def on_ion_stop(self, st):
         """0x456790"""
         tal = self.tal
+        if self.out is not None:
+            self.out.range3d(self.ion_number, st)
         x, y, z = st.x, st.y, st.z
         tal.g280 = tal.g280 + x
         tal.g288 = tal.g288 + x ** 2

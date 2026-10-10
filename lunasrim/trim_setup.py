@@ -83,6 +83,8 @@ class TrimTarget(object):
             self.mean_z.append(vbint(zz))
         # per layer constants
         z1, m1 = self.z[0], self.mass[0]
+        # Mass*1000 in TRIM: the ion mass is a VB Single, Single*Integer -> Single
+        self.mass1000 = [f32(m1 * 1000)] + [m * 1000 for m in self.mass[1:]]
         self.N = []          # atomic density (1/A^3)
         self.L0 = []         # N^-1/3
         self.L0pi = []
@@ -109,7 +111,7 @@ class TrimTarget(object):
             mr = self.m_ratio[j]
             self.emin_fac.append(((5 * ef) * (1 + mr) ** 2) / (4 * mr))
             self.bohr.append((177 * z1) * math.sqrt(zt * self.N[j]))
-            self.strag_low.append(((((3.2 * 12.0) * self.N[j]) / (1000 * m1)) * (float(zt + z1) ** (8.0 / 3.0))) ** 0.5)
+            self.strag_low.append(((((3.2 * 12.0) * self.N[j]) / self.mass1000[0]) * (float(zt + z1) ** (8.0 / 3.0))) ** 0.5)
             self.c724.append((float(zt) ** (-7.0 / 3.0)) * 0.01)
             self.c728.append(((float(zt) ** (2.0 / 3.0)) * 0.1334) / math.sqrt(self.mean_mass[j]))
         # pairwise constants: atoms 0..nel (0 = ion) x target elements 1..nel
