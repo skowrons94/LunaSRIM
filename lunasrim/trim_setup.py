@@ -63,6 +63,14 @@ class TrimTarget(object):
             self.stoich_sum.append(s)
         for j, l in enumerate(ti.layers):
             self.frac.append([0.0] + [f32(x / self.stoich_sum[j]) for x in l.stoich])
+        # TRIM treats an element as "gas" in every layer as soon as it is
+        # present in one gas layer (array D4fd94c)
+        self.elem_phase = [0] * (nel + 1)
+        for j, l in enumerate(ti.layers):
+            if l.phase == 1:
+                for i in range(1, nel + 1):
+                    if self.frac[j][i] > 0:
+                        self.elem_phase[i] = 1
         self.mean_mass = []
         self.mean_z = []
         for j in range(nlay):
@@ -145,7 +153,7 @@ class TrimTarget(object):
                         continue
                     z2 = self.z[i]
                     for k in range(1000):
-                        s = self._se10(z1, z2, egrid[k + 1], self.phase[j], self.bragg[j])
+                        s = self._se10(z1, z2, egrid[k + 1], self.elem_phase[i], self.bragg[j])
                         tab[k] = tab[k] + (s * f) * self.N[j]
                 per_layer.append(tab)
             self.stop.append(per_layer)

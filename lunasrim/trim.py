@@ -12,6 +12,7 @@ import math
 from .rng import TrimRandom
 from .trim_setup import TrimTarget, PI
 from .trimin import f32
+from .tally import TrimTally, vb_int
 
 _sqrt = math.sqrt
 _log = math.log
@@ -69,6 +70,8 @@ class TrimEngine(object):
         self.r_z = [0.0] * n
         self.z_of = [ti.ion_z] + [e.z for e in ti.elements]
         self.ncx = self.ncy = self.ncz = self.nsine = 0.0
+        self.tal = TrimTally(t.nel, t.nlay, log)
+        self.invbinw = 1 / self.binw
 
     STACK = 200000
 
@@ -102,10 +105,11 @@ class TrimEngine(object):
         return i
 
     # ---------------------------------------------------------- electronic loss
-    def eloss(self, p, e, length, layer):
-        """returns (e, dE, straggling); e may be raised to 0.001"""
+    def eloss(self, p, e, length, layer, single=False):
+        """returns (e, dE, straggling); e may be raised to 0.001 (written back
+        to the caller's variable, a Single for recoils)"""
         if e < 0.001:
-            e = 0.001
+            e = f32(0.001) if single else 0.001
         g = self.grid_g
         k = int(math.floor(_log(e) / g)) + 1
         if k > 999:
@@ -364,9 +368,11 @@ class TrimEngine(object):
             st.layer = self.find_layer(st.x)
             if st.x < 0:
                 self.fate = 'B'
+                self.on_backscatter(st)
                 return st
             if st.x > t.depth[-1]:
                 self.fate = 'T'
+                self.on_transmit(st)
                 return st
             atom = self.choose_atom(st.layer)
             pimp = _sqrt(self.rnd('434c1c') / ((PI * length) * t.N[st.layer]))
@@ -374,10 +380,12 @@ class TrimEngine(object):
             st.cx, st.cy, st.cz, st.sine = self.new_direction(psi, phi, st.cx, st.cy, st.cz, st.sine)
             self.ncx, self.ncy, self.ncz, self.nsine = st.cx, st.cy, st.cz, st.sine
             st.e = st.e - tt
+            self.tally_ion_path(st, xold, de, tt, atom)
             if not (st.x < self.xmin or st.x > self.xmax):
                 self.recoil(st, atom, tt, rth, rphi, psi, phi)
             if not (st.e > ef):
                 self.fate = 'S'
+                self.on_ion_stop(st)
                 return st
 
     # ----------------------------------------------------------------- recoils
@@ -397,6 +405,7 @@ class TrimEngine(object):
 
     def full_cascade(self, st, atom, tt, rth, rphi):
         t = self.t
+        self.st_y = st.y
         ef = self.ef
         rtyp, rlay_, rcx, rcy, rcz, rsin = self.r_type, self.r_lay, self.r_cx, self.r_cy, self.r_cz, self.r_sine
         re, rx, ry, rz = self.r_e, self.r_x, self.r_y, self.r_z
@@ -446,7 +455,7 @@ class TrimEngine(object):
                         state = 'NEXT'
                         continue
                 rl = self.find_layer(rx[k])
-                e, de, strag = self.eloss(rt, re[k], lr, rl)
+                e, de, strag = self.eloss(rt, re[k], lr, rl, True)
                 if e != re[k]:
                     re[k] = f32(e)
                 if de > re[k]:
@@ -519,30 +528,284 @@ class TrimEngine(object):
                     self.flag60c = 1
                 state = 'LOOP' if re[k] > ef else 'STOP'
 
-    # tally hooks (overridden by the statistics collector)
+    # ----------------------------------------------------------------- tallies
+    def bin_of(self, x):
+        b = vb_int((x - self.xmin) / self.binw) + 1
+        if b < 1:
+            b = 1
+        elif b > 100:
+            b = 100
+        return b
+
+    def lat_bin(self, y):
+        b = vb_int(y / self.binw) + 50
+        if not (b > 1):
+            b = 1
+        if not (b < 100):
+            b = 100
+        return int(b)
+
+    def binfrac(self, st, x1):
+        """fractions of the path x1 -> st.x falling in each depth bin (0x45e0f0);
+        returns (b1, b2, f1, f2, fm, step); may move st.x (as TRIM does)"""
+        xmin, xmax, binw = self.xmin, self.xmax, self.binw
+        x2 = st.x
+        w = 1
+        w0 = w
+        f1 = 0
+        f2 = 0
+        fm = 0
+        b1 = self.bin_of(x1)
+        b2 = self.bin_of(x2)
+        step = 1 if x2 >= x1 else -1
+        if (x1 < xmin and x2 < xmin) or (x1 > xmax and x2 > xmax):
+            return b1, b2, f1, f2, fm, step
+        if x1 > xmin and x1 < xmax and x2 > xmin and x2 < xmax and b1 == b2:
+            return b1, b2, w, f2, fm, step
+        if x1 == x2:
+            x2 = x1 + 0.01
+            st.x = x2
+        ln = abs(x2 - x1)
+        a = x1
+        b = x2
+        if x1 < xmin:
+            w = w - (w0 * (xmin - x1)) / ln
+            a = xmin
+        if x1 > xmax:
+            w = w - (w0 * (x1 - xmax)) / ln
+            a = xmax
+        if x2 < xmin:
+            w = w - (w0 * (xmin - x2)) / ln
+            b = xmin
+        if x2 > xmax:
+            w = w - (w0 * (x2 - xmax)) / ln
+            b = xmax
+        ln = abs(b - a)
+        if ln == 0:
+            ln = 1
+        l40 = l50 = 0
+        if step == 1:
+            l40 = (xmin + binw * b1) - a
+            l50 = b - (xmin + binw * (b2 - 1))
+        if step == -1:
+            l40 = (a - xmin) - binw * (b1 - 1)
+            l50 = (xmin + binw * b2) - b
+        if b1 == b2:
+            l50 = abs(b - a)
+            l40 = 0
+        f1 = (w * l40) / ln
+        f2 = (w * l50) / ln
+        d = abs(b1 - b2)
+        if d > 1:
+            fm = ((w - f2) - f1) / (d - 1)
+        return b1, b2, f1, f2, fm, step
+
+    def tally_ion_path(self, st, xold, de, tt, atom):
+        """0x44d4e0: energy deposited along the ion's last flight path"""
+        x = st.x
+        xmin, xmax = self.xmin, self.xmax
+        if (xold < xmin and x < xmin) or (xold > xmax and x > xmax):
+            return
+        b1, b2, f1, f2, fm, step = self.binfrac(st, xold)
+        tal = self.tal
+        inv = self.invbinw
+        b1 = int(b1)
+        b2 = int(b2)
+        v = de * inv
+        tal.d964.add(v * f1, 1, b1)
+        tal.d964.add(v * f2, 1, b2)
+        lat = self.lat_bin(st.y)
+        tal.d97c.add(v * f1, b1, lat)
+        tal.d97c.add(v * f2, b2, lat)
+        mids = range(b1 + step, b2 - step + step, step) if step > 0 else range(b1 + step, b2 - step + step, step)
+        for i in mids:
+            tal.d964.add(v * fm, 1, i)
+            tal.d97c.add(v * fm, i, lat)
+        a40 = 2 if self.kpflag == 1 else atom + 1
+        w = tt * inv
+        if tt >= self.t.ed[atom]:
+            tal.d95c.add(w * f1, 1, b1)
+            tal.d95c.add(w * f2, 1, b2)
+            tal.d95c.add(w * f1, a40, b1)
+            tal.d95c.add(w * f2, a40, b2)
+            for i in mids:
+                tal.d95c.add(w * fm, 1, i)
+                tal.d95c.add(w * fm, a40, i)
+        else:
+            tal.d970.add(w * f1, 1, b1)
+            tal.d970.add(w * f2, 1, b2)
+            lat = self.lat_bin(st.y)
+            tal.d980.add(w * f1, b1, lat)
+            tal.d980.add(w * f2, b2, lat)
+            for i in mids:
+                tal.d970.add(w * fm, 1, i)
+                tal.d980.add(w * fm, i, lat)
+
+    # tally hooks
     def on_phonon(self, st, atom, tt):
-        pass
+        """0x4575e0: energy below the cutoff given to the lattice"""
+        b = int(self.bin_of(st.x))
+        self.g5ec = b
+        w = tt * self.invbinw
+        self.tal.d970.add(w, 2, b)
+        lat = self.lat_bin(st.y)
+        self.tal.d980.add(w, b, lat)
 
     def on_kinchin_pease(self, st, atom, tt):
         pass
 
     def on_first_vacancy(self, st, atom, tt):
-        pass
+        """STARTRECOIL: the ion displaced the target atom"""
+        tal = self.tal
+        inv = self.invbinw
+        tal.g244 = tal.g244 + inv
+        tal.g61c = tal.g61c + inv
+        self.st = st
+        if st.x > self.xmin and st.x < self.xmax:
+            b = int(self.bin_of(self.r_x[1]))
+            self.g5ec = b
+            tal.d9a0.add(inv, 1, b)
+            tal.d9a0.add(inv, atom + 1, b)
+            lat = self.lat_bin(st.y)
+            tal.d988.add(inv, b, lat)
+            tal.d95c.set(tal.d95c.get(1, b) - self.t.lattice[atom] * inv, 1, b)
 
     def on_recoil_transmitted(self, k):
         pass
 
     def on_recoil_surface(self, k, rt, eperp):
-        pass
+        """0x441ff0: histogram of the normal energy of recoils reaching the surface"""
+        tal = self.tal
+        b = eperp * 10
+        if b < 1:
+            b = 1
+        elif b > 200:
+            b = 200
+        b = int(round(b))
+        tal.d9b8.add(1, rt + 1, b)
+        if not (eperp < self.t.surface[rt]):
+            inv = self.invbinw
+            tal.g244 = tal.g244 + self.flag60c * inv
+            tal.g61c = tal.g61c + self.flag60c * inv
+            tal.g230 = tal.g230 + 1
+            tal.d994.add(1, rt + 1)
+            tal.d968.add(self.r_e[k] - self.t.surface[rt], rt + 1)
 
     def on_recoil_move(self, k, rt, rl, de):
-        pass
+        """0x456370 RECMOVEDATA: electronic loss of a recoil"""
+        tal = self.tal
+        b = int(self.bin_of(self.r_x[k]))
+        v = de * self.invbinw
+        tal.d964.add(v, 2, b)
+        lat = self.lat_bin(self.st_y)
+        tal.d97c.add(v, b, lat)
 
     def on_recoil_stop(self, k):
-        pass
+        """0x457970 RECSTOPDATA"""
+        tal = self.tal
+        inv = self.invbinw
+        rt = self.r_type[k]
+        x = self.r_x[k]
+        b = int(self.bin_of(x))
+        inside = 1 if (x > self.xmin and x < self.xmax) else 0
+        if inside == 1:
+            w = self.r_e[k] * inv
+            tal.d970.add(w, 2, b)
+            lat = self.lat_bin(self.st_y)
+            tal.d980.add(w, b, lat)
+        if self.displaced == 0:
+            self.displaced = 1
+            return
+        if self.flag60c > 0:
+            self.flag60c = 0
+            return
+        if k != 1:
+            atom = self.r_type[k - 1]
+            if self.r_e[k - 1] > self.t.ed[atom] and atom == rt:
+                self.replacement(atom, b, inside)
+        tal.g1c4 = tal.g1c4 + inv
+        if inside == 1:
+            tal.d98c.add(inv, rt + 1, b)
+            lat = self.lat_bin(self.st_y)
+            tal.d978.add(inv, b, lat)
+
+    def replacement(self, atom, b, inside):
+        """0x459140: replacement collision"""
+        tal = self.tal
+        inv = self.invbinw
+        tal.g244 = tal.g244 - inv
+        tal.g1d8 = tal.g1d8 + inv
+        lat = self.lat_bin(self.st_y)
+        if inside == 1:
+            tal.d9a0.add(-inv, atom + 1, b)
+            tal.d988.add(-inv, b, lat)
+        if inside == 1:
+            tal.d96c.add(inv, b)
+            tal.d984.add(inv, b, lat)
+        if inside == 1:
+            w = self.t.lattice[atom] * inv
+            tal.d970.add(w, 2, b)
+            lat = self.lat_bin(self.st_y)
+            tal.d980.add(w, b, lat)
 
     def on_recoil_replace(self, k):
-        pass
+        """0x459b70: popped recoil below Ed (stays at its site)"""
+        e = self.r_e[k]
+        if not (e > 0):
+            return
+        x = self.r_x[k]
+        if x < self.xmin or x > self.xmax:
+            return
+        b = int(self.bin_of(x))
+        w = e * self.invbinw
+        self.tal.d970.add(w, 2, b)
+        lat = self.lat_bin(self.st_y)
+        self.tal.d980.add(w, b, lat)
 
     def on_vacancy(self, k):
-        pass
+        """0x458b90: a popped recoil leaves its site"""
+        tal = self.tal
+        inv = self.invbinw
+        tal.g244 = tal.g244 + inv
+        tal.g61c = tal.g61c + inv
+        x = self.r_x[k]
+        if x > self.xmin and x < self.xmax:
+            b = int(self.bin_of(x))
+            tal.d9a0.add(inv, self.r_type[k] + 1, b)
+            lat = self.lat_bin(self.st_y)
+            tal.d988.add(inv, b, lat)
+
+    def on_backscatter(self, st):
+        self.tal.n_back += 1
+
+    def on_transmit(self, st):
+        self.tal.n_trans += 1
+
+    def on_ion_stop(self, st):
+        """0x456790"""
+        tal = self.tal
+        x, y, z = st.x, st.y, st.z
+        tal.g280 = tal.g280 + x
+        tal.g288 = tal.g288 + x ** 2
+        tal.g290 = tal.g290 + x ** 3
+        tal.g298 = tal.g298 + x ** 4
+        ay = abs(y)
+        tal.g2c0 = tal.g2c0 + ay
+        tal.g2c8 = tal.g2c8 + ay ** 2
+        r = _sqrt(y * y + z * z)
+        tal.g2d0 = r + tal.g2d0
+        tal.g2d8 = r ** 2.0 + tal.g2d8
+        if x > self.xmin and x < self.xmax:
+            inv = self.invbinw
+            b = int(self.bin_of(x))
+            w = st.e * inv
+            tal.d970.add(w, 1, b)
+            lat = self.lat_bin(y)
+            tal.d980.add(w, b, lat)
+            tal.d98c.add(inv, 1, b)
+            tal.d9b0.add(ay, 1, b)
+            tal.d9b0.add(ay ** 2, 2, b)
+            tal.d9ac.add(r, 1, b)
+            tal.d9ac.set(r ** 2.0 + tal.d9ac.get(2, b), 2, b)
+            lat = self.lat_bin(y)
+            tal.d974.add(inv, b, lat)
