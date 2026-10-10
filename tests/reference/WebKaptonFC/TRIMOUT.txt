@@ -1,0 +1,25 @@
+============================== SRIM-2013.00 ==============================
+==============================================================================
+===== TRIMOUT.txt: File of Transmitted / Backscattered / Sputtered Atoms =====
+=  This file tabulates the kinetics of ions or atoms leaving the target.     =
+=  Column #1: S= Sputtered Atom, B= Backscattered Ion, T= Transmitted Ion.   =
+=  Col.#2: Ion Number, Col.#3: Z of atom leaving, Col.#4: Atom energy (eV).  =
+=  Col.#5-7: Last location:  X= Depth into target, Y,Z= Transverse axes.     =
+=  Col.#8-10: Cosines of final trajectory.                                   =
+= *** This data file is in the same format as TRIM.DAT (see manual for uses).=
+====== TRIM Calc.= Si(300 keV) ==> Kapton Polyimide Fil( 6000 A) =============
+ Ion  Atom   Energy        Depth       Lateral-Position        Atom Direction      
+ Numb Numb    (eV)          X(A)        Y(A)       Z(A)      Cos(X)  Cos(Y) Cos(Z) 
+T    5 14 .4058310E+05   6000588E-03 -.2702E+03  .2130E+03   .9846803  .1560912 -.0777186
+S    6  7 .2352890E+02   0000000E+00 -.1526E+01  .4039E+01  -.4494009  .6647779  .5967488
+S    6  1 .2995638E+01   0000000E+00 -.4032E+01  .8416E+00  -.3554406 -.4466602 -.8210704
+S    6  1 .8864587E+01   0000000E+00 -.4676E+01  .1456E+01  -.9998270 -.0162293  .0090851
+S   10  6 .2349366E+02   0000000E+00 -.5373E+02  .3864E+02  -.9416350 -.1136596 -.3168676
+S   11  6 .1214783E+03   0000000E+00  .3748E-01  .2023E+03  -.9014977  .3757520 -.2147377
+S   11  1 .6381516E+01   0000000E+00 -.3795E+01  .2018E+03  -.8614632 -.4670526 -.1993566
+S   11  6 .9870239E+01   0000000E+00  .2857E+00  .2058E+03  -.9667163 -.1755298 -.1861418
+S   11  1 .2153010E+01   0000000E+00 -.9520E+01  .2008E+03  -.9997810  .0155586 -.0139938
+S   11  1 .3611376E+01   0000000E+00 -.9473E+01  .1993E+03  -.9476328 -.1736616  .2680178
+S   11  6 .1122253E+02   0000000E+00 -.8628E+01  .1928E+03  -.8962648  .1270879 -.4249213
+S   11  1 .5144705E+01   0000000E+00 -.9069E+01  .1938E+03  -.9974167 -.0685457  .0214790
+S   11  1 .1241765E+01   0000000E+00 -.8692E+01  .1918E+03  -.9771625 -.1649007  .1340196

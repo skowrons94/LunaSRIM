@@ -1,0 +1,36 @@
+WebAirPMMA
+Ion: Z, Mass [amu], Energy [keV], Angle [degrees], Number Ions, Bragg Corr, AutoSave Number
+2 4.003 3000 10 150 1 10000
+Cascades(1=Kitchn-Peese, 2=Full-Cascade, 3=Sputtering, 4-5=Ions;6-7=Neutrons), Random Number Seed, Reminders
+1 99 0
+Diskfiles (0=no,1=yes): RANGES.txt, BACKSCATT.txt, TRANSMIT.txt, Sputtered, COLLISIONS.txt(0=no, 1=Ion, 2=Ion+Recoils), Special EXYZ.txt file
+1 1 1 1 0 0
+Target material : Number of Elements, Number of Layers
+"PMMAAir, Dry (ICRU-104)GaAs" 7 3
+PlotType (0-5); Plot Depths: Xmin, Xmax(Ang.) [=0 0 for Viewing Full Target]
+5 0 0
+Target Elements:    Z   Mass [amu]
+Atom 1 = H =     1 1.008
+Atom 2 = C =     6 12.011
+Atom 3 = O =     8 15.999
+Atom 4 = N =     7 14.007
+Atom 5 = Ar =     18 39.948
+Atom 6 = Ga =     31 69.72
+Atom 7 = As =     33 74.922
+Layer    Layer Name   Width Density  H(1) C(6) O(8) N(7) Ar(18) Ga(31) As(33)
+Number   Description  (Ang) (g/cm^3)Stoich Stoich Stoich Stoich Stoich Stoich Stoich
+1 "PMMA" 20000 0.95 4 2.5 1 0 0 0 0
+2 "Air, Dry (ICRU-104)" 2000000 0.00120484 0 1 1403.3 5222.9 31.102 0 0
+3 "GaAs" 50000 5.32 0 0 0 0 0 1 1
+0  Target layer phases (0=Solid, 1=Gas)
+0 1 0
+Target Compound Corrections (Bragg)
+ 1 1 1
+Individual target atom displacement energies (eV)
+ 10 28 28 28 25 25 25
+Individual target atom lattice binding energies (eV)
+ 3 3 3 3 3 3 3
+Individual target atom surface binding energies (eV)
+ 0 7.41 0 0 0 2.82 1.26
+Stopping Power Version (1=2011, 0=2011)
+0

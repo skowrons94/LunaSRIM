@@ -180,13 +180,22 @@ at once (`LUNASRIM_MAX_JOBS`, default 2).
 
 - Kinchin-Pease and full cascades, and sputtering mode;
 - gas and compound layers;
+- compounds from the dictionary (Kapton, Mylar, PMMA, bone, quartz, air,
+  GaN, GaAs), up to 7 elements, with fractional stoichiometries and missing
+  binding energies;
+- mixed targets such as Mylar / air (gas) / Si;
 - several layers, including non-integer widths;
 - oblique incidence and a plot window.
 
-`tests/reference_sr/` does the same for `SRModule.exe` and 13 `SR.IN`
-files: H to U ions, solids and gases, all 8 stopping units, eV to GeV
-energies, and Bragg corrections, in both table and list modes. All of them
-are identical to the original output.
+All 20 cases match line by line. In 4 cases a few printed values differ in
+their last digit (transmitted-ion direction cosines, one lateral position).
+`tests/reference/README.md` lists these differences and explains them: they
+come from round-off in the floating-point math library.
+
+`tests/reference_sr/` does the same for `SRModule.exe` and 16 `SR.IN`
+files: H to U ions, solids, gases and compounds (bone, Kapton, air), all 8
+stopping units, eV to GeV energies, and Bragg corrections, in both table
+and list modes. All of them are identical to the original output.
 
 ```sh
 python -m unittest discover tests        # or: pytest

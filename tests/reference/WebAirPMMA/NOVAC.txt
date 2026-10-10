@@ -1,0 +1,14 @@
+====== PMMAAir, Dry (ICRU-104)GaAs =======
+        SRIM-2013.00
+=========================================
+        Replacement Collisions       
+ See SRIM Outputs\TDATA.txt for calc. details   
+=========================================
+====== TRIM Calc.= He(3 MeV) ==> PMMA+Air, Dry (ICRU-104)(  207 um) ==========
+------------------------------------------------------------------------------
+--------------------------------------------------------------------
+    Recoil/Damage Calculations made with Kinchin-Pease Estimates    
+--------------------------------------------------------------------
+
+ There are NO Replacement Collisions calculated.
+ You must execute a full TRIM cascade calculation for these.

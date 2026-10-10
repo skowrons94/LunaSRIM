@@ -1,0 +1,20 @@
+---Stopping/Range Input Data (Number-format: Period = Decimal Point)
+---Output File Name
+"CBone.txt"
+---Ion(Z), Ion Mass(u)
+6   12
+---Target Data: (Solid=0,Gas=1), Density(g/cm3), Compound Corr.
+0    1.92    0.97
+---Number of Target Elements
+ 6 
+---Target Elements: (Z), Target name, Stoich, Target Mass(u)
+1   "H"   39.3   1.008
+6   "C"   15.1   12.011
+7   "N"   3.5   14.007
+8   "O"   31.7   15.999
+20   "Ca"   6.5   40.078
+15   "P"   3.9   30.974
+---Output Stopping Units (1-8)
+ 2
+---Ion Energy : E-Min(keV), E-Max(keV)
+ 5    50000

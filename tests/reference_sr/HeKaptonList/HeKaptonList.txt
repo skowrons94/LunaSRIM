@@ -1,0 +1,10 @@
+Ion = Helium      , Mass = 4.003
+Tgt =  C +  H +  N +  O (Solid), Density = 1.42 g/cm3
+Stopping Units = MeV/mm       
+Energy(keV)  S(Elec)    S(Nuc)
+1.000E+01   6.192E+01  1.105E+01 
+1.000E+02   1.782E+02  2.076E+00 
+5.000E+02   3.003E+02  5.695E-01 
+1.000E+03   2.848E+02  3.180E-01 
+5.000E+03   1.197E+02  7.901E-02 
+2.000E+04   4.180E+01  2.307E-02 

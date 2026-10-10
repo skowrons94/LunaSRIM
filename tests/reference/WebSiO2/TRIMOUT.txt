@@ -1,0 +1,20 @@
+============================== SRIM-2013.00 ==============================
+==============================================================================
+===== TRIMOUT.txt: File of Transmitted / Backscattered / Sputtered Atoms =====
+=  This file tabulates the kinetics of ions or atoms leaving the target.     =
+=  Column #1: S= Sputtered Atom, B= Backscattered Ion, T= Transmitted Ion.   =
+=  Col.#2: Ion Number, Col.#3: Z of atom leaving, Col.#4: Atom energy (eV).  =
+=  Col.#5-7: Last location:  X= Depth into target, Y,Z= Transverse axes.     =
+=  Col.#8-10: Cosines of final trajectory.                                   =
+= *** This data file is in the same format as TRIM.DAT (see manual for uses).=
+====== TRIM Calc.=  N(80 keV) ==> SiO2 - quartz (ICRU-( 3000 A) ==============
+ Ion  Atom   Energy        Depth       Lateral-Position        Atom Direction      
+ Numb Numb    (eV)          X(A)        Y(A)       Z(A)      Cos(X)  Cos(Y) Cos(Z) 
+T   13  7 .1252579E+04   3000751E-03 -.2729E+03  .4353E+03   .6725440 -.1721650 -.7197525
+T   18  7 .1854899E+04   3000658E-03  .2255E+03  .4577E+03   .7558914  .4237245 -.4990849
+T   19  7 .7844293E+02   3000416E-03  .1077E+03  .1825E+03   .6957073  .4887083 -.5264557
+T   69  7 .4617872E+04   3001164E-03 -.9398E+02 -.4549E+03   .9886062 -.0693754 -.1335849
+T   90  7 .4141373E+04   3000819E-03 -.3326E+03  .3625E+03   .7701298  .2779852  .5741291
+T  139  7 .3049297E+04   3001340E-03  .3713E+01 -.4336E+03   .9275011  .3185375  .1956415
+T  160  7 .2253255E+04   3001894E-03 -.7962E+02 -.1011E+04   .9305626 -.2030361 -.3046796
+T  168  7 .1017234E+04   3000226E-03 -.5693E+03  .7230E+03   .6276874 -.0106325  .7783929

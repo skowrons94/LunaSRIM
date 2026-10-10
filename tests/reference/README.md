@@ -18,10 +18,21 @@ reproduces them line by line (apart from the calculation date).
 | BSiPW  | Kinchin-Pease | plot window (Xmin, Xmax) |
 | OAlFC  | full cascade  | three layers with non integer widths |
 | UFeKP  | Kinchin-Pease | 50 MeV U in steel (fractional stoichiometries) |
+| HKaptonBR   | Kinchin-Pease | 500 keV H in Kapton (C22H10N2O5), transmission |
+| OBoneFC     | full cascade  | O in bone, six elements, fractional stoichiometries |
+| ArGaNSP     | monolayer / sputtering | 2 keV Ar on GaN at 45 deg |
+| HeMylarAir  | Kinchin-Pease | 5 MeV He through Mylar / 0.5 mm air (gas) / Si, missing surface energies (defaults) |
+| WebSiO2     | Kinchin-Pease | quartz from the compound dictionary (as built by the web app) |
+| WebAirPMMA  | Kinchin-Pease | PMMA / dry air (gas) / GaAs, 7 elements, 10 deg |
+| WebKaptonFC | full cascade  | Si in Kapton from the compound dictionary |
 
 Known differences (last printed digit only):
 
 * HeAuC: two direction cosines of transmitted ions (TRANSMIT.txt/TRIMOUT.txt).
+* HKaptonBR, HeMylarAir: direction cosines of some transmitted ions
+  (TRANSMIT.txt/TRIMOUT.txt, 7th decimal); positions and energies agree.
+  In HeMylarAir the ions cross 0.5 mm of gas, so the round-off of the many
+  direction updates accumulates.
 * UFeKP: the lateral position of ion 29 (RANGE_3D.txt, 5th digit) and two
   LATERAL.txt values that depend on it.
 

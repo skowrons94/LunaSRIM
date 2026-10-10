@@ -11,6 +11,7 @@ import os
 from . import data_files
 from .trimin import f32
 from .vbfmt import vb_format, vb_str, vb_cstr, vb_print_num
+from .tally import F32
 
 CRLF = '\r\n'
 
@@ -53,6 +54,11 @@ def cos_string(c, low=-0.9999999):
     if v < low:
         return -0.9999999
     return v
+
+
+def _rset(s, w):
+    """VB RSet: right-align in w characters, keep the leftmost w if longer"""
+    return s[:w] if len(s) > w else s.rjust(w)
 
 
 class TrimOutput(object):
@@ -578,7 +584,7 @@ class TrimDistributions(object):
             out.append(line)
         out.append('')
         out.append(' To convert to Energy Lost - multiply by Average Binding Energy = ' +
-                   vb_str(self.eng.avg_lattice) + ' ' + ' eV/Vacancy')
+                   vb_str(self.eng.avg_lattice, isinstance(self.eng.avg_lattice, F32)) + ' ' + ' eV/Vacancy')
         self._save(f, out)
 
     # --------------------------------------------------------------- PHONON
@@ -646,9 +652,11 @@ class TrimDistributions(object):
         ncol = t.nel + 1 if self.kp == 0 else 2
         for i in range(1, 101):
             line = ('%13s' % vb_format(self.depth[i], '000000.E+00  '))[-13:]
-            line += ('%13s' % vb_format(tal.d95c.get(1, i) / self.ions, '0000.00E+00  '))[-13:]
+            # RSet: a negative value (round-off of the energy balance) is
+            # one character too long and loses its rightmost character
+            line += _rset(vb_format(tal.d95c.get(1, i) / self.ions, '0000.00E+00  '), 13)
             for j in range(2, ncol + 1):
-                line += ('%*s' % (w2, vb_format(tal.d95c.get(j, i) / self.ions, fmt)))[-w2:]
+                line += _rset(vb_format(tal.d95c.get(j, i) / self.ions, fmt), w2)
             out.append(line)
         self._save(f, out)
 

@@ -1,0 +1,41 @@
+====== GaN =======
+        SRIM-2013.00
+=======================================
+      Data  of  TRIM  Calculation      
+=======================================
+====== TRIM Calc.= Ar(2 keV) ==> GaN(  300 A) ================================
+------------------------------------------------------------------------------
+Ion = Ar (18)   Ion Mass= 039.9620
+Energy  = 2000000.E-06 keV
+Ion Angle to Surface = 45 degrees
+============= TARGET MATERIAL ======================================
+  Layer # 1 - GaN
+  Layer # 1 - Bottom Depth=     3.E+02 A
+  Layer # 1- Density = 8.846E22 atoms/cm3 = 6.15 g/cm3
+  Layer # 1- Ga = 50   Atomic Percent = 83.2 Mass Percent
+  Layer # 1-  N = 50   Atomic Percent = 16.7 Mass Percent
+====================================================================
+Target energies for target atom = Ga
+    Displacement = 25 eV, Binding = 3 eV, Surface = 2.82 eV
+Target energies for target atom =  N
+    Displacement = 28 eV, Binding = 3 eV, Surface = 2 eV
+====================================================================
+Depth Range of Tabulated Data=  000000.E+00  -  300000.E-03  Angstroms
+====================================================================
+Total Ions calculated =  000060
+Average Range         =   21421.E-03 Angstroms
+Average Straggling    =   11400.E-03 Angstroms
+Average Vacancy/Ion   =   38350.E-03
+====================================================================
+Total Backscattered Ions=  7 
+Total Transmitted Ions  =  0 
+====================================================================
+See files SRIM Outputs\*.txt for tables :
+   TDATA.txt    -- Details of the calculation.
+   RANGE.txt    -- Final distribution of Ions/Recoils
+   VACANCY.txt  -- Distribution of Vacancies
+   IONIZ.txt    -- Distribution of Ionization
+   PHONON.txt   -- Distribution of Phonons
+   E2RECOIL.txt -- Energy transferred to recoils
+   NOVAC.txt    -- Replacement collisions
+   LATERAL.txt  -- Lateral Spread of Ions

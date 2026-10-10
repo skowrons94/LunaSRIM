@@ -83,9 +83,13 @@ class TrimEngine(object):
         self.recoil_segments = None
         self.invbinw = t.inv_binwidth
         # average lattice binding energy (G4fd93c)
-        acc = 0
+        # a Variant: Integer / Integer is a Single, so a TRIM.IN with
+        # integer lattice energies gives a Single average
+        acc = None
         for i in range(1, t.nel + 1):
-            acc = acc + ti.lattice[i - 1] / t.nel
+            v = ti.lattice[i - 1]
+            term = F32(v / t.nel) if isinstance(v, int) else v / t.nel
+            acc = term if acc is None else acc + term
         self.avg_lattice = acc
 
     STACK = 200000

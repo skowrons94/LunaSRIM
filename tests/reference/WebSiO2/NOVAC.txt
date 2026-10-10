@@ -1,0 +1,14 @@
+====== SiO2 - quartz (ICRU- =======
+        SRIM-2013.00
+=========================================
+        Replacement Collisions       
+ See SRIM Outputs\TDATA.txt for calc. details   
+=========================================
+====== TRIM Calc.=  N(80 keV) ==> SiO2 - quartz (ICRU-( 3000 A) ==============
+------------------------------------------------------------------------------
+--------------------------------------------------------------------
+    Recoil/Damage Calculations made with Kinchin-Pease Estimates    
+--------------------------------------------------------------------
+
+ There are NO Replacement Collisions calculated.
+ You must execute a full TRIM cascade calculation for these.

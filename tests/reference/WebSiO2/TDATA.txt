@@ -1,0 +1,44 @@
+====== SiO2 - quartz (ICRU- =======
+        SRIM-2013.00
+=======================================
+      Data  of  TRIM  Calculation      
+=======================================
+====== TRIM Calc.=  N(80 keV) ==> SiO2 - quartz (ICRU-( 3000 A) ==============
+------------------------------------------------------------------------------
+--------------------------------------------------------------------
+    Recoil/Damage Calculations made with Kinchin-Pease Estimates    
+--------------------------------------------------------------------
+Ion =  N ( 7)   Ion Mass= 014.0030
+Energy  = 8000000.E-05 keV
+Ion Angle to Surface = 0 degrees
+============= TARGET MATERIAL ======================================
+  Layer # 1 - SiO2 - quartz (ICRU-
+  Layer # 1 - Bottom Depth=     3.E+03 A
+  Layer # 1- Density = 6.975E22 atoms/cm3 = 2.32 g/cm3
+  Layer # 1-  O = 66.6 Atomic Percent = 53.2 Mass Percent
+  Layer # 1- Si = 33.3 Atomic Percent = 46.7 Mass Percent
+====================================================================
+Target energies for target atom =  O
+    Displacement = 28 eV, Binding = 3 eV, Surface = 0 eV
+Target energies for target atom = Si
+    Displacement = 15 eV, Binding = 3 eV, Surface = 4.7 eV
+====================================================================
+Depth Range of Tabulated Data=  000000.E+00  -  300000.E-02  Angstroms
+====================================================================
+Total Ions calculated =  000200
+Average Range         =   21427.E-01 Angstroms
+Average Straggling    =   54983.E-02 Angstroms
+Average Vacancy/Ion   =   44029.E-02
+====================================================================
+Total Backscattered Ions=  0 
+Total Transmitted Ions  =  8 
+====================================================================
+See files SRIM Outputs\*.txt for tables :
+   TDATA.txt    -- Details of the calculation.
+   RANGE.txt    -- Final distribution of Ions/Recoils
+   VACANCY.txt  -- Distribution of Vacancies
+   IONIZ.txt    -- Distribution of Ionization
+   PHONON.txt   -- Distribution of Phonons
+   E2RECOIL.txt -- Energy transferred to recoils
+   NOVAC.txt    -- Replacement collisions
+   LATERAL.txt  -- Lateral Spread of Ions

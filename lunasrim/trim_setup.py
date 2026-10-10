@@ -52,6 +52,18 @@ class TrimTarget(object):
         self.ed = [0.0] + list(ti.ed)
         self.lattice = [0.0] + list(ti.lattice)
         self.surface = [0.0] + list(ti.surface)
+        # 0x44efc0: missing energies get TRIM's defaults.  The first target
+        # atom only gets a displacement energy (20 eV); the others take its
+        # displacement energy, 4 eV surface and 2 eV lattice binding energy.
+        if nel >= 1 and self.ed[1] <= 0:
+            self.ed[1] = 20
+        for i in range(2, nel + 1):
+            if self.ed[i] <= 0:
+                self.ed[i] = self.ed[1]
+            if self.surface[i] <= 0:
+                self.surface[i] = 4
+            if self.lattice[i] <= 0:
+                self.lattice[i] = 2
         self.e0 = ti.energy * 1000            # eV
         self.angle = ti.angle * PI / 180.0
         # layer depths
@@ -103,12 +115,14 @@ class TrimTarget(object):
         self.mean_z = []
         for j in range(nlay):
             m = 0
-            zz = 0.0
+            zz = 0
             for i in range(1, nel + 1):
                 m = m + self.frac[j][i] * self.mass[i]
-                zz = zz + self.frac[j][i] * self.z[i]
+                # 0x450b9d: Integer variable, CInt (round half to even) after
+                # every element
+                zz = int(round(self.frac[j][i] * self.z[i] + zz))
             self.mean_mass.append(m)
-            self.mean_z.append(vbint(zz))
+            self.mean_z.append(zz)
         # per layer constants
         z1, m1 = self.z[0], self.mass[0]
         # Mass*1000 in TRIM: the ion mass is a VB Single, Single*Integer -> Single

@@ -1,0 +1,31 @@
+WebKaptonFC
+Ion: Z, Mass [amu], Energy [keV], Angle [degrees], Number Ions, Bragg Corr, AutoSave Number
+14 27.977 300 0 12 1 10000
+Cascades(1=Kitchn-Peese, 2=Full-Cascade, 3=Sputtering, 4-5=Ions;6-7=Neutrons), Random Number Seed, Reminders
+2 99 0
+Diskfiles (0=no,1=yes): RANGES.txt, BACKSCATT.txt, TRANSMIT.txt, Sputtered, COLLISIONS.txt(0=no, 1=Ion, 2=Ion+Recoils), Special EXYZ.txt file
+1 1 1 1 0 0
+Target material : Number of Elements, Number of Layers
+"Kapton Polyimide Fil" 4 1
+PlotType (0-5); Plot Depths: Xmin, Xmax(Ang.) [=0 0 for Viewing Full Target]
+5 0 0
+Target Elements:    Z   Mass [amu]
+Atom 1 = H =     1 1.008
+Atom 2 = C =     6 12.011
+Atom 3 = N =     7 14.007
+Atom 4 = O =     8 15.999
+Layer    Layer Name   Width Density  H(1) C(6) N(7) O(8)
+Number   Description  (Ang) (g/cm^3)Stoich Stoich Stoich Stoich
+1 "Kapton Polyimide Fil" 6000 1.42 5 11 1 2.5
+0  Target layer phases (0=Solid, 1=Gas)
+0
+Target Compound Corrections (Bragg)
+ 1
+Individual target atom displacement energies (eV)
+ 10 28 28 28
+Individual target atom lattice binding energies (eV)
+ 3 3 3 3
+Individual target atom surface binding energies (eV)
+ 0 7.41 0 0
+Stopping Power Version (1=2011, 0=2011)
+0

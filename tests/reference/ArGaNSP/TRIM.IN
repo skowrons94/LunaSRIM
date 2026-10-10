@@ -1,0 +1,29 @@
+ArGaNSP
+Ion: Z, Mass [amu], Energy [keV], Angle [degrees], Number Ions, Bragg Corr, AutoSave Number
+18 39.962 2 45 60 1 0
+Cascades(1=Kitchn-Peese, 2=Full-Cascade, 3=Sputtering, 4-5=Ions;6-7=Neutrons), Random Number Seed, Reminders
+3 31 0
+Diskfiles (0=no,1=yes): RANGES.txt, BACKSCATT.txt, TRANSMIT.txt, Sputtered, COLLISIONS.txt(0=no, 1=Ion, 2=Ion+Recoils), Special EXYZ.txt file
+1 1 1 1 0 0
+Target material : Number of Elements, Number of Layers
+"GaN" 2 1
+PlotType (0-5); Plot Depths: Xmin, Xmax(Ang.) [=0 0 for Viewing Full Target]
+5 0 0
+Target Elements:    Z   Mass [amu]
+Atom 1 = Ga =     31 69.72
+Atom 2 = N =     7 14.007
+Layer    Layer Name   Width Density  Ga(31) N(7)
+Number   Description  (Ang) (g/cm^3)Stoich Stoich
+1 "GaN" 300 6.15 1 1
+0  Target layer phases (0=Solid, 1=Gas)
+0
+Target Compound Corrections (Bragg)
+ 0.98
+Individual target atom displacement energies (eV)
+ 25 28
+Individual target atom lattice binding energies (eV)
+ 3 3
+Individual target atom surface binding energies (eV)
+ 2.82 2
+Stopping Power Version (1=2011, 0=2011)
+0

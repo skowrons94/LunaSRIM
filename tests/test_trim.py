@@ -19,7 +19,9 @@ REF = os.path.join(HERE, 'reference')
 # lines known to differ from TRIM.exe: {case: {file: number of lines}}
 # (rare last-digit differences, see tests/reference/README.md)
 KNOWN = {'HeAuC': {'TRANSMIT.txt': 2, 'TRIMOUT.txt': 2},
-         'UFeKP': {'LATERAL.txt': 2, 'RANGE_3D.txt': 1}}
+         'UFeKP': {'LATERAL.txt': 2, 'RANGE_3D.txt': 1},
+         'HKaptonBR': {'TRANSMIT.txt': 1, 'TRIMOUT.txt': 1},
+         'HeMylarAir': {'TRANSMIT.txt': 21, 'TRIMOUT.txt': 21}}
 
 
 def _lines(path):
