@@ -1,0 +1,41 @@
+====== InP =======
+        SRIM-2013.00
+=======================================
+      Data  of  TRIM  Calculation      
+=======================================
+====== TRIM Calc.= Xe(2 keV) ==> InP(  80 A) =================================
+------------------------------------------------------------------------------
+Ion = Xe (54)   Ion Mass= 131.9040
+Energy  = 2000000.E-06 keV
+Ion Angle to Surface = 0 degrees
+============= TARGET MATERIAL ======================================
+  Layer # 1 - InP
+  Layer # 1 - Bottom Depth=     8.E+01 A
+  Layer # 1- Density = 3.973E22 atoms/cm3 = 4.81 g/cm3
+  Layer # 1- In = 50   Atomic Percent = 78.7 Mass Percent
+  Layer # 1-  P = 50   Atomic Percent = 21.2 Mass Percent
+====================================================================
+Target energies for target atom = In
+    Displacement = 25 eV, Binding = 3 eV, Surface = 2.49 eV
+Target energies for target atom =  P
+    Displacement = 25 eV, Binding = 3 eV, Surface = 3.43 eV
+====================================================================
+Depth Range of Tabulated Data=  000000.E+00  -  800000.E-04  Angstroms
+====================================================================
+Total Ions calculated =  000010
+Average Range         =   45631.E-03 Angstroms
+Average Straggling    =   14224.E-03 Angstroms
+Average Vacancy/Ion   =   37900.E-03
+====================================================================
+Total Backscattered Ions=  0 
+Total Transmitted Ions  =  0 
+====================================================================
+See files SRIM Outputs\*.txt for tables :
+   TDATA.txt    -- Details of the calculation.
+   RANGE.txt    -- Final distribution of Ions/Recoils
+   VACANCY.txt  -- Distribution of Vacancies
+   IONIZ.txt    -- Distribution of Ionization
+   PHONON.txt   -- Distribution of Phonons
+   E2RECOIL.txt -- Energy transferred to recoils
+   NOVAC.txt    -- Replacement collisions
+   LATERAL.txt  -- Lateral Spread of Ions

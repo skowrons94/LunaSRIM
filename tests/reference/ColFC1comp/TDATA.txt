@@ -1,0 +1,41 @@
+====== TaN =======
+        SRIM-2013.00
+=======================================
+      Data  of  TRIM  Calculation      
+=======================================
+====== TRIM Calc.=  N(20 keV) ==> TaN( 1500 A) ===============================
+------------------------------------------------------------------------------
+Ion =  N ( 7)   Ion Mass= 014.0030
+Energy  = 2000000.E-05 keV
+Ion Angle to Surface = 0 degrees
+============= TARGET MATERIAL ======================================
+  Layer # 1 - TaN
+  Layer # 1 - Bottom Depth=     2.E+03 A
+  Layer # 1- Density = 8.834E22 atoms/cm3 = 14.3 g/cm3
+  Layer # 1- Ta = 50   Atomic Percent = 92.8 Mass Percent
+  Layer # 1-  N = 50   Atomic Percent = 7.18 Mass Percent
+====================================================================
+Target energies for target atom = Ta
+    Displacement = 25 eV, Binding = 3 eV, Surface = 8.1 eV
+Target energies for target atom =  N
+    Displacement = 28 eV, Binding = 3 eV, Surface = 2 eV
+====================================================================
+Depth Range of Tabulated Data=  000000.E+00  -  150000.E-02  Angstroms
+====================================================================
+Total Ions calculated =  000008
+Average Range         =   20790.E-02 Angstroms
+Average Straggling    =   13624.E-02 Angstroms
+Average Vacancy/Ion   =   18288.E-02
+====================================================================
+Total Backscattered Ions=  0 
+Total Transmitted Ions  =  0 
+====================================================================
+See files SRIM Outputs\*.txt for tables :
+   TDATA.txt    -- Details of the calculation.
+   RANGE.txt    -- Final distribution of Ions/Recoils
+   VACANCY.txt  -- Distribution of Vacancies
+   IONIZ.txt    -- Distribution of Ionization
+   PHONON.txt   -- Distribution of Phonons
+   E2RECOIL.txt -- Energy transferred to recoils
+   NOVAC.txt    -- Replacement collisions
+   LATERAL.txt  -- Lateral Spread of Ions

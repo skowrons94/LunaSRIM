@@ -17,7 +17,6 @@ Python re-implementation, which reproduces SRIM-2013 TRIM ion for ion.
 import os
 import random
 import shutil
-import warnings
 
 from . import data_files
 from .trimin import TrimInput, TrimInputElement, TrimInputLayer
@@ -221,10 +220,6 @@ class TRIM(object):
         ``directory/SRIM Outputs`` (the layout of a SRIM installation).
         Returns a :class:`lunasrim.results.Results`.
         """
-        if self.settings['collisions']:
-            warnings.warn('COLLISON.txt is not produced by lunasrim; the setting is ignored')
-        if self.settings['exyz']:
-            warnings.warn('EXYZ.txt is not produced by lunasrim; the setting is ignored')
         os.makedirs(directory, exist_ok=True)
         text = self.trim_input_text()
         with open(os.path.join(directory, 'TRIM.IN'), 'wb') as fh:

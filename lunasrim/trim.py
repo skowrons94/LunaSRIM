@@ -85,6 +85,21 @@ class TrimEngine(object):
         self.path = None
         self.recoil_segments = None
         self.invbinw = t.inv_binwidth
+        # EXYZ.txt: energy interval (eV, G4fd340), last energy bin written
+        # (G4fd360) and TRIM's global T (energy of the last ion recoil)
+        self.exyz = ti.file_exyz if ti.file_exyz and ti.file_exyz > 0 else 0
+        self.exyz_bin = 0
+        self.t_last = 0
+        # COLLISON.txt (1 = ion collisions, 2 = with the recoil cascades):
+        # totals of displacements, vacancies, interstitials and replacements
+        # at the last line written (G4fdc38/40/48/50) and at the end of the
+        # previous ion (G4fdc68/78/88/98), sputtered and transmitted atoms
+        self.coll = int(ti.file_collisions or 0)
+        self.c_snap = [0.0, 0.0, 0.0, 0.0]
+        self.c_ion_snap = [0.0, 0.0, 0.0, 0.0]
+        self.c_sput_snap = 0.0
+        self.c_trans_snap = 0
+        self.casc_n = 0             # G4fd55c: number of the next listed recoil
         # average lattice binding energy (G4fd93c)
         # a Variant: Integer / Integer is a Single, so a TRIM.IN with
         # integer lattice energies gives a Single average
@@ -359,8 +374,105 @@ class TrimEngine(object):
     def run_ion(self):
         st = self._run_ion()
         self.last_e = st.e
+        self.end_of_ion(st)
         self.ion_stats()
         return st
+
+    def end_of_ion(self, st):
+        """0x438338: common end of an ion history (stopped, transmitted or
+        backscattered)"""
+        if self.coll > 0:
+            self.ion_summary()
+        if self.exyz > 0:
+            self.exyz_row(st, 0)
+
+    def _damage_totals(self):
+        tal = self.tal
+        return [tal.g61c, tal.g244, tal.g1c4, tal.g1d8]
+
+    def se_at(self, e, layer):
+        """electronic stopping of the ion (eV/A) interpolated in TRIM's table,
+        as shown in COLLISON.txt (0x4452d0)"""
+        k = int(math.floor(_log(e) / self.grid_g)) + 1
+        if k > 999:
+            k = 999
+        if k < 1:
+            k = 1
+        a = _pow(self.grid_eg, k - 1)
+        b = self.grid_eg * a
+        tab = self.t.stop[0][layer]
+        s0 = tab[k - 1]
+        return s0 + ((tab[k] - s0) * (e - a)) / (b - a)
+
+    def collision_row(self, st, atom, tt):
+        """0x4452d0: COLLISON.txt line for an ion collision which displaced
+        the target atom"""
+        cur = self._damage_totals()
+        snap = self.c_snap
+        # no line if the collision added nothing: vacancies (Kinchin-Pease)
+        # or displacements (cascades, once there are any)
+        if self.kpflag == 1:
+            if not (cur[1] - snap[1] > 0):
+                return
+        elif cur[0] > 0 and not (cur[0] - snap[0] > 0):
+            return
+        inv = self.invbinw
+        disp, vac, inter, repl = [(c - p) / inv for c, p in zip(cur, snap)]
+        if self.out is not None:
+            e = tt + st.e
+            se = self.se_at(e, st.layer)
+            row = (self.ion_number, e / 1000, st.x, st.y, st.z, se, self.z_of[atom], tt)
+            if self.kpflag == 1:
+                self.out.coll_kp(row, vac)
+            elif self.coll == 1:
+                self.out.coll_counts(row, disp, vac, repl, inter)
+            else:
+                if self.casc_n > 0:
+                    self.out.casc_end()
+                self.out.coll_summary(tt, disp, vac, repl, inter)
+        if self.coll == 2:
+            self.casc_n = 0
+        self.c_snap = cur
+
+    def ion_summary(self):
+        """0x444a10: damage of the ion and averages (COLLISON.txt)"""
+        tal = self.tal
+        inv = self.invbinw
+        n = self.ion_number
+        snap = self.c_snap
+        per = [(c - p) / inv for c, p in zip(snap, self.c_ion_snap)]
+        avg = [(c / n) / inv for c in snap]
+        sput = tal.g230 - self.c_sput_snap
+        trans = tal.n_trans - self.c_trans_snap
+        if self.out is not None:
+            self.out.coll_ion_summary(n, per, avg, sput, tal.g230 / n, trans, tal.n_trans / n)
+        self.c_ion_snap = list(snap)
+        self.c_sput_snap = tal.g230
+        self.c_trans_snap = tal.n_trans
+
+    def exyz_row(self, st, de):
+        """0x4444f0: one line of EXYZ.txt"""
+        if self.out is not None:
+            self.out.exyz(self.ion_number, st.e if not (st.e < self.ef) else 0, st.x, st.y, st.z,
+                          de, self.t_last)
+        if st.e < self.ef:
+            self.t_last = 0
+
+    def exyz_check(self, st):
+        """0x434617: EXYZ.txt line each time the ion energy falls below a
+        multiple of the energy interval (and at the start of the ion).  The
+        electronic stopping is TRIM's energy loss over 1 A without
+        straggling; it draws a random number like any other energy loss."""
+        q = self.exyz
+        if st.e == self.e0:
+            first = True
+        elif math.floor(st.e / q) < self.exyz_bin:
+            first = False
+        else:
+            return
+        st.e, de, strag = self.eloss(0, st.e, 1, st.layer)
+        self.exyz_row(st, de - strag)
+        self.exyz_bin = math.floor(st.e / q) - (1 if first else 0)
 
     def ion_stats(self):
         """0x45a200: running averages shown by TRIM (range, lateral, radial)"""
@@ -400,10 +512,14 @@ class TrimEngine(object):
         self.recoil_segments = [] if self.record_path else None
         e0 = self.e0
         ef = self.ef
+        exyz = self.exyz > 0
+        self.t_last = 0
         while True:
             if log is not None:
                 log.write('CYC E=%r X=%r Y=%r Z=%r CX=%r CY=%r CZ=%r L=%r\n' % (
                     st.e, st.x, st.y, st.z, st.cx, st.cy, st.cz, st.layer + 1))
+            if exyz:
+                self.exyz_check(st)
             st.layer = self.find_layer(st.x)
             length = self.flight_path(st)
             st.e, de, strag = self.eloss(0, st.e, length, st.layer)
@@ -428,14 +544,19 @@ class TrimEngine(object):
                 self.on_transmit(st)
                 return st
             atom = self.choose_atom(st.layer)
+            self.atom_g = atom          # TRIM's global ATOM (also set by the cascades)
             pimp = _sqrt(self.rnd('434c1c') / ((PI * length) * t.N[st.layer]))
             psi, phi, rth, rphi, tt = self.magic(0, atom, st.e, pimp)
+            self.t_last = tt
             st.cx, st.cy, st.cz, st.sine = self.new_direction(psi, phi, st.cx, st.cy, st.cz, st.sine)
             self.ncx, self.ncy, self.ncz, self.nsine = st.cx, st.cy, st.cz, st.sine
             st.e = st.e - tt
             self.tally_ion_path(st, xold, de, tt, atom)
             if not (st.x < self.xmin or st.x > self.xmax):
                 self.recoil(st, atom, tt, rth, rphi, psi, phi)
+            # the condition uses ATOM, which the cascade may have changed
+            if self.coll > 0 and tt > self.t.ed[self.atom_g]:
+                self.collision_row(st, atom, tt)
             if not (st.e > ef):
                 self.fate = 'S'
                 self.on_ion_stop(st)
@@ -483,6 +604,8 @@ class TrimEngine(object):
             self.on_first_vacancy(st, atom, tt)
             v = f32(tt - t.lattice[atom])
             re[1] = v if not (v < 0) else 0.0
+            if self.coll == 2:
+                self.casc_start(st, atom, tt)
         k = 1
         state = 'LOOP'
         while True:
@@ -522,6 +645,7 @@ class TrimEngine(object):
                     state = 'STOP'
                     continue
                 atom = self.choose_atom(rl)
+                self.atom_g = atom
                 pimp = _sqrt(self.rnd('4366cd')) * l0pi[rl]
                 zr = self.z_of[rt]
                 if zr < 21 and rx[k] < 2 * l0[0]:
@@ -822,14 +946,14 @@ class TrimEngine(object):
         if k != 1:
             atom = self.r_type[k - 1]
             if self.r_e[k - 1] > self.t.ed[atom] and atom == rt:
-                self.replacement(atom, b, inside)
+                self.replacement(atom, b, inside, k)
         tal.g1c4 = tal.g1c4 + inv
         if inside == 1:
             tal.d98c.add(inv, rt + 1, b)
             lat = self.lat_bin(self.st_y)
             tal.d978.add(inv, b, lat)
 
-    def replacement(self, atom, b, inside):
+    def replacement(self, atom, b, inside, k=None):
         """0x459140: replacement collision"""
         tal = self.tal
         inv = self.invbinw
@@ -847,6 +971,8 @@ class TrimEngine(object):
             tal.d970.add(w, 2, b)
             lat = self.lat_bin(self.st_y)
             tal.d980.add(w, b, lat)
+        if self.coll == 2 and k is not None:
+            self.casc_row(k, 0, 1)
 
     def on_recoil_replace(self, k):
         """0x459b70: popped recoil below Ed (stays at its site)"""
@@ -874,6 +1000,26 @@ class TrimEngine(object):
             tal.d9a0.add(inv, self.r_type[k] + 1, b)
             lat = self.lat_bin(self.st_y)
             tal.d988.add(inv, b, lat)
+        if self.coll == 2:
+            self.casc_row(k, 1, 0)
+
+    # COLLISON.txt listing of the recoil cascades (collision details = 2)
+    def casc_start(self, st, atom, tt):
+        """0x446260 (G4fd55c = 1): start of a cascade"""
+        self.casc_n = 1
+        if self.out is not None:
+            e = tt + st.e
+            row = (self.ion_number, e / 1000, st.x, st.y, st.z, self.se_at(e, st.layer), self.z_of[atom], tt)
+            self.out.coll_start(row)
+            self.out.casc_prime(self.ion_number, self.z_of[atom], tt, self.r_x[1], self.r_y[1], self.r_z[1])
+        self.casc_n = 2
+
+    def casc_row(self, k, vac, repl):
+        """0x446260: a recoil leaves its site (vacancy) or replaces an atom"""
+        if self.out is not None:
+            self.out.casc_row(self.casc_n, self.z_of[self.r_type[k]], self.r_e[k], self.r_x[k], self.r_y[k],
+                              self.r_z[k], vac, repl)
+        self.casc_n += 1
 
     def on_backscatter(self, st):
         self.tal.n_back += 1

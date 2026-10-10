@@ -17,14 +17,14 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'
 from lunasrim.trimin import TrimInput      # noqa: E402
 from lunasrim.srim import run_trim         # noqa: E402
 
-FILES = ('RANGE.txt', 'IONIZ.txt', 'PHONON.txt', 'E2RECOIL.txt', 'VACANCY.txt', 'NOVAC.txt',
+FILES = ('RANGE.txt', 'IONIZ.txt', 'PHONON.txt', 'E2RECOIL.txt', 'VACANCY.txt', 'NOVAC.txt', 'EXYZ.txt', 'COLLISON.txt',
          'LATERAL.txt', 'TDATA.txt', 'TRIMOUT.txt', 'TRANSMIT.txt', 'BACKSCAT.txt',
          'SPUTTER.txt', 'RANGE_3D.txt')
 
 
 def _lines(path):
     with open(path, 'rb') as fh:
-        return [l for l in fh.read().decode('latin-1').split('\r\n') if 'Calculation Date=' not in l]
+        return [l for l in fh.read().decode('latin-1').split('\r\n') if 'Calculation Date=' not in l and not l.startswith('Calc. Date=')]
 
 
 def compare(case, verbose=True):
@@ -53,6 +53,11 @@ def compare(case, verbose=True):
                         report.append('    lunasrim: ' + x)
                         report.append('    TRIM    : ' + y)
                         break
+    extra = sorted(n for n in FILES if os.path.exists(os.path.join(out, n)) and
+                   not os.path.exists(os.path.join(case, n)))
+    for name in extra:
+        report.append('%s: written by lunasrim but not by TRIM' % name)
+        bad += 1
     return bad, report, out
 
 

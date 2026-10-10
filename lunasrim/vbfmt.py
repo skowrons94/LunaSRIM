@@ -201,7 +201,9 @@ def vb_format(x, fmt, single=False):
         d = Decimal(x)
     else:
         # Format$ converts with 17 significant digits (Str$/CStr use 15)
-        d = Decimal('%.16e' % float(x))
+        # Format$ converts with 17 significant digits for scientific formats
+        # and with 15 for fixed point formats (Str$/CStr use 15)
+        d = Decimal(('%.16e' if ('E' in fmt or 'e' in fmt) else '%.14e') % float(x))
     neg = d < 0
     if neg and len(secs) > 1 and secs[1] != '':
         sec = secs[1]

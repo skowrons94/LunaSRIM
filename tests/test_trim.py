@@ -31,7 +31,7 @@ except ImportError:
 def _lines(path):
     with open(path, 'rb') as fh:
         text = fh.read().decode('latin-1')
-    return [l for l in text.split('\r\n') if 'Calculation Date=' not in l]
+    return [l for l in text.split('\r\n') if 'Calculation Date=' not in l and not l.startswith('Calc. Date=')]
 
 
 class TestAgainstTrim(unittest.TestCase):
@@ -44,6 +44,8 @@ class TestAgainstTrim(unittest.TestCase):
             run_trim(TrimInput.read(os.path.join(ref, 'TRIM.IN')), out)
             names = sorted(n for n in os.listdir(ref) if n.endswith('.txt'))
             self.assertTrue(names)
+            mine = sorted(n for n in os.listdir(out) if n.endswith('.txt'))
+            self.assertEqual(mine, names, '%s: output files' % case)
             for name in names:
                 a = _lines(os.path.join(out, name))
                 b = _lines(os.path.join(ref, name))

@@ -1,0 +1,49 @@
+============================== SRIM-2013.00 ==============================
+==============================================================================
+------------------------------------------------------------------------------
+ =====================================================================
+                       SPUTTERING   CALCULATION                       
+ =====================================================================
+ =====================================================================
+ =   AXIS DEFINITIONS: X=Depth, Y,Z= Lateral plane of target surface.=
+ =   (If beam enters target at an angle, this tilt is in Y direction)=
+ =   Shown are: Ion Number                                           =
+ =              Sputtered atom type (atomic name) and energy (eV)    =
+ =                 (Note: SBE is NOT subtracted from atom energy)    =
+ =              Point of ejection relative to ion entrance point.    =
+ =              Trajectional cosines of ejected atom.                =
+ =                  Cosine (X) is negative indicating motion away    =
+ =                     from the target surface.                      =
+ =                  Cosine (Y) and Cosine (Z) are transverse motion. =
+ =====================================================================
+ ==================  CALCULATION   DATA  =============================
+  Calculation Date= 10-10-2026, Time= 18:54:28
+  Ion Data: Name,   Mass,   Energy (keV)
+            N    14.003 20.
+  Displacement Energy of Ta = 25.00000 eV
+  Latt.Binding Energy of Ta = 3.00000 eV
+  SurfaceBind. Energy of Ta = 8.10000 eV
+  Displacement Energy of  N = 28.00000 eV
+  Latt.Binding Energy of  N = 3.00000 eV
+  SurfaceBind. Energy of  N = 2.00000 eV
+==============================================================================
+=  This file tabulates the kinetics of ions or atoms leaving the target.     =
+=  Column #1: S= Sputtered Atom, B= Backscattered Ion, T= Transmitted Ion.   =
+=  Col.#2: Ion Number, Col.#3: Z of atom leaving, Col.#4: Atom energy (eV).  =
+=  Col.#5-7: Last location:  X= Depth into target, Y,Z= Transverse axes.     =
+=  Col.#8-10: Cosines of final trajectory.                                   =
+= *** This data file is in the same format as TRIM.DAT (see manual for uses).=
+====== TRIM Calc.=  N(20 keV) ==> TaN( 1500 A) ===============================
+ Ion  Atom   Energy        Depth       Lateral-Position        Atom Direction      
+ Numb Numb    (eV)          X(A)        Y(A)       Z(A)      Cos(X)  Cos(Y) Cos(Z) 
+S    1  7 .7433379E+02   0000000E+00  .2863E+01  .2794E+02  -.9991128 -.0296569 -.0299002
+S    1  7 .8127622E+01   0000000E+00  .3954E+01  .2674E+02  -.9102734  .3915718  .1344395
+S    1  7 .2175735E+01   0000000E+00  .1382E+01  .2701E+02  -.9938852  .1078550 -.0236534
+S    1  7 .2793810E+01   0000000E+00  .8849E+00  .2574E+02  -.9857962  .1175575 -.1199424
+S    1 73 .2891105E+02   0000000E+00 -.6557E+01  .3216E+02  -.7223457  .4432395  .5308064
+S    1 73 .2986036E+02   0000000E+00 -.8040E+01  .3256E+02  -.6744499 -.2172412  .7056370
+S    1  7 .8778063E+01   0000000E+00 -.6519E+01  .2940E+02  -.9150844  .1147526  .3865906
+S    3 73 .1956233E+02   0000000E+00 -.9523E+00 -.2409E+02  -.7424238  .6415515 -.1929210
+S    3  7 .6334863E+01   0000000E+00 -.2963E+01 -.2430E+02  -.9231852 -.2540962 -.2883819
+S    3  7 .3300203E+01   0000000E+00 -.5288E+01 -.2379E+02  -.9415341 -.2575621  .2171989
+S    3  7 .8003478E+01   0000000E+00 -.7264E+01 -.2038E+02  -.9634925 -.1298774 -.2341241

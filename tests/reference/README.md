@@ -38,8 +38,21 @@ reproduces them line by line (apart from the calculation date).
 | UAgFCSP     | full cascade  | 50 keV U on Ag / AgAu, 30 deg |
 | HeArGasW    | Kinchin-Pease | 2 MeV He through 1 mm Ar gas into W |
 | NAlGaAsSP   | monolayer / sputtering | 5 keV N on AlGaAs at 60 deg |
+| ColKP       | Kinchin-Pease | COLLISON.txt (ion collisions with Kinchin-Pease vacancies) |
+| ColKPcomp   | Kinchin-Pease | COLLISON.txt in GaAs, 20 deg |
+| ColFC1      | full cascade  | COLLISON.txt, collisions with damage counts |
+| ColFC1comp  | full cascade  | COLLISON.txt in TaN, all per-ion files too |
+| ColFC       | full cascade  | COLLISON.txt with the listing of every cascade |
+| ColFC2Lay   | full cascade  | cascade listing and EXYZ.txt, SiO2 / Si |
+| ColSP       | monolayer / sputtering | cascade listing, 1 keV Ar on Cu |
+| ColSPcomp   | monolayer / sputtering | cascade listing, 2 keV Xe on InP |
+| ColGas2L    | full cascade  | cascade listing, EXYZ.txt, TaN / N2 gas, 30 deg |
+| ExyzKP      | Kinchin-Pease | EXYZ.txt only (no TRIMOUT.txt is written) |
+| ExyzFCtr    | full cascade  | EXYZ.txt, transmitted ions |
+| ExyzBack    | Kinchin-Pease | EXYZ.txt, backscattered ions (2 keV H on Au) |
 
-All files agree line by line with lunasrim's native VB runtime math
+All files agree line by line (lunasrim also writes no file that TRIM does
+not write) with lunasrim's native VB runtime math
 (`lunasrim/vbmath.py`).  Before it was used, HeAuC, UFeKP, HKaptonBR,
 HeMylarAir, HeArGasW, HPbLong, CSteel8 and XeSiHigh had a few last-digit
 differences, and in HeArGasW one ion took a visibly different path.  The

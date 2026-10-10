@@ -8,7 +8,7 @@ import datetime
 import math
 import os
 
-from . import data_files
+from . import data_files, vbmath
 from .trimin import f32
 from .vbfmt import vb_format, vb_str, vb_cstr, vb_print_num
 from .tally import F32
@@ -61,6 +61,14 @@ def _rset(s, w):
     return s[:w] if len(s) > w else s.rjust(w)
 
 
+def title_built(ti):
+    """TRIM builds the "TRIM Calc.=" title line (0x43b6b0) when it opens
+    TRIMOUT.txt (backscattered, transmitted or sputtered atom files) or
+    COLLISON.txt"""
+    return (ti.file_backscatt == 1 or ti.file_transmit == 1 or ti.file_sputtered == 1 or
+            (ti.file_collisions or 0) > 0)
+
+
 class TrimOutput(object):
     """Writes the SRIM Outputs files during and after a TRIM run."""
 
@@ -110,12 +118,13 @@ class TrimOutput(object):
     def start(self):
         """open the per-ion files (TRIMOUT, TRANSMIT, BACKSCAT, SPUTTER, RANGE_3D)"""
         ti = self.ti
-        # TRIMOUT.txt (0x43bbc0)
-        self._open('out', 'TRIMOUT.txt')
-        self._w('out', self.g_b2c)
-        self._w('out', self.g_b30)
-        for l in self.header_lines[1:]:
-            self._w('out', l)
+        # TRIMOUT.txt (0x43bbc0), opened by the BACKSCAT/TRANSMIT/SPUTTER setup
+        if ti.file_backscatt == 1 or ti.file_transmit == 1 or ti.file_sputtered == 1:
+            self._open('out', 'TRIMOUT.txt')
+            self._w('out', self.g_b2c)
+            self._w('out', self.g_b30)
+            for l in self.header_lines[1:]:
+                self._w('out', l)
         if ti.file_backscatt == 1:
             self._open('back', 'BACKSCAT.txt')
             self._w('back', self.g_b2c)
@@ -134,6 +143,165 @@ class TrimOutput(object):
             self._sputter_header()
         if ti.file_ranges == 1:
             self._range3d_header()
+        if ti.file_exyz and ti.file_exyz > 0:
+            self._exyz_header()
+        if ti.file_collisions and ti.file_collisions > 0:
+            self._coll_header()
+
+    # ------------------------------------------------------------ COLLISON.txt
+    COLL_HEAD = ['=' * 102,
+                 '  Ion    Energy    Depth     Lateral Distance (A)   Se    Atom  Recoil    Target Target Target Target ',
+                 '  Numb   (keV)      (A)       Y Axis    Z Axis    (eV/A)  Hit  Energy(eV) DISP.  VAC.   REPLAC INTER  ',
+                 '-' * 102]
+
+    def _coll_header(self):
+        """0x4431d0: COLLISON.txt"""
+        ti = self.ti
+        t = self.eng.t
+        self._open('coll', 'COLLISON.txt')
+        w = lambda s='': self._w('coll', s)
+        w(self.g_b2c)
+        w(self.g_b30)
+        w('-' * 78)
+        w(self.title)
+        w('-' * 78)
+        w('=' * 60)
+        w('\xba     Ion Name   =     ' + symbol2(ti.ion_z) + ' ' * 34 + '\xba')
+        w('\xba     Ion Mass   =    ' + vb_format(t.mass[0], '000.000', single=True) + ' amu' + ' ' * 26 + '\xba')
+        w('\xba     Ion Energy =' + vb_format(ti.energy, '000000000.0') + ' keV' + ' ' * 26 + '\xba')
+        w('=' * 60)
+        for i in range(1, t.nel + 1):
+            sym = symbol2(t.z[i])
+            w('>     ' + sym + '  Displacement Energy of ' + sym + ' = ' + vb_format(t.ed[i], '0000.00000') + ' eV')
+            w('  Latt.Binding Energy of ' + sym + ' = ' + vb_format(t.lattice[i], '0000.00000') + ' eV')
+            w('  SurfaceBind. Energy of ' + sym + ' = ' + vb_format(t.surface[i], '0000.00000') + ' eV')
+        w('=' * 60)
+        if self.eng.kpflag == 1:
+            w('=' * 74)
+            w('\xb3=> Recoils Calculated with Kinchin-Pease Theory (Only Vacancies Calc) <=\xb3')
+            w('=' * 74)
+        w(' ')
+        w('==========================  COLLISION HISTORY  =======================================================')
+        w('  NOTES: Only Ion Collisions which produce Displacements are tabulated.                               ')
+        w('         Atom Sums and Averages are Incomplete if Recoil Cascades Leave Target.                       ')
+        w('         Target DISPlacements = VACancies + REPLACement Collisions.                                   ')
+        w('         Target VACancies = INTERstitials + Sputtered + Transmitted Atoms.                            ')
+        w('                            Recoil Atoms which end at the surface, are not counted (see manual).      ')
+        for l in self.COLL_HEAD:
+            w(l)
+
+    @staticmethod
+    def _coll_row(row):
+        """0x43e360/0x43f190: ion number .. recoil energy of a COLLISON.txt line"""
+        ion, e_kev, x, y, z, se, zat, t = row
+        b = '\xb3'
+        return (b + vb_format(ion, '00000') + b + vb_format(e_kev, '00.00E+00') + b +
+                vb_format(x, '00000.E+00') + b + vb_format(y, ' 0000.E+00;-0000.E+00') + b +
+                vb_format(z, ' 0000.E+00;-0000.E+00') + b + vb_format(se, '0000.00') + b + ' ' +
+                symbol2(zat)[:2] + ' ' + b + vb_format(t, '00000.E+00'))
+
+    def coll_kp(self, row, vac):
+        if 'coll' in self.files:
+            self._w('coll', self._coll_row(row) + '\xb3' + vb_format(vac, '000000000.000') +
+                    '\xb3      \xb3      \xb3')
+
+    def coll_counts(self, row, disp, vac, repl, inter):
+        if 'coll' in self.files:
+            b = '\xb3'
+            self._w('coll', self._coll_row(row) + b + vb_format(disp, '000000') + b + vb_format(vac, '000000') +
+                    b + vb_format(repl, '000000') + b + vb_format(inter, '000000') + b)
+
+    def coll_start(self, row):
+        if 'coll' in self.files:
+            self._w('coll', self._coll_row(row) + '\xb3 <== Start of New Cascade  \xb3')
+
+    @staticmethod
+    def _casc_line(n, z, e, x, y, zz, vac, repl):
+        """0x43fb10"""
+        return ('\xdb ' + vb_format(n, '00000   ') + vb_format(z, '00  ') + vb_format(e, '00000.E+00 ') +
+                vb_format(x, '0000.E+00 ') + vb_format(y, ' 0000.E+00 ;-0000.E+00 ') +
+                vb_format(zz, ' 0000.E+00  ;-0000.E+00  ') + vb_format(vac, '0   ') + vb_format(repl, '00 \xdb'))
+
+    def casc_prime(self, ion, z, e, x, y, zz):
+        if 'coll' in self.files:
+            self._w('coll', '=' * 81)
+            self._w('coll', '  Recoil Atom Energy(eV)   X (A)      Y (A)      Z (A)   Vac Repl Ion Numb' +
+                    vb_format(ion, ' 00000') + '=')
+            self._w('coll', self._casc_line(1, z, e, x, y, zz, 1, 0) + '<\xc4Prime Recoil\xdb')
+
+    def casc_row(self, n, z, e, x, y, zz, vac, repl):
+        if 'coll' in self.files:
+            self._w('coll', self._casc_line(n, z, e, x, y, zz, vac, repl))
+
+    def casc_end(self):
+        if 'coll' in self.files:
+            self._w('coll', '=' * 66)
+
+    def coll_summary(self, t, disp, vac, repl, inter):
+        """0x43f810: end of a cascade listing"""
+        if 'coll' in self.files:
+            b = '\xb3'
+            self._w('coll', '\xb3                                Summary of Above Cascade ==> \xb3' +
+                    vb_format(t, '00000.E+00') + b + vb_format(disp, '000000') + b + vb_format(vac, '000000') +
+                    b + vb_format(repl, '000000') + b + vb_format(inter, '000000') + b)
+
+    def coll_ion_summary(self, ion, per, avg, sput, avg_sput, trans, avg_trans):
+        """0x444a10"""
+        if 'coll' not in self.files:
+            return
+        w = lambda s: self._w('coll', s)
+        disp, vac, inter, repl = per
+        adisp, avac, ainter, arepl = avg
+        end = '                         \xba'
+        w('=' * 102)
+        w('- For Ion ' + vb_format(ion, '0000000') +
+          ':               For All Ions to date :                                              \xba')
+        w('- Displacements     = ' + vb_format(disp, '000000.0') + '   Average Displacements/Ion     = ' +
+          vb_format(adisp, '0000000.000') + end)
+        rows = (('- Replacements      = ', repl, '   Average Replacements/Ion      = ', arepl),
+                ('- Vacancies         = ', vac, '   Average Vacancies/Ion         = ', avac),
+                ('- Interstitials     = ', inter, '   Average Interstitials/Ion     = ', ainter),
+                ('- Sputtered Atoms   = ', sput, '   Average Sputter Atoms/Ion     = ', avg_sput),
+                ('- Transmitted Atoms = ', trans, '   Average Transmitted Atoms/Ion = ', avg_trans))
+        for l1, v, l2, a in rows:
+            w(l1 + vb_format(v, '000000.0') + l2 + vb_format(a, '0000000.0') + '00' + end)
+        for l in self.COLL_HEAD:
+            w(l)
+
+    def _exyz_header(self):
+        """0x443fb0: EXYZ.txt"""
+        ti = self.ti
+        t = self.eng.t
+        self._open('exyz', 'EXYZ.txt')
+        w = lambda s='': self._w('exyz', s)
+        d = self.date
+        w('Calc. Date= %02d-%02d-%04d, Time= %02d:%02d:%02d' % (d.month, d.day, d.year, d.hour, d.minute, d.second))
+        w(self.g_b2c)
+        for l in (' =====================================================================',
+                  ' =                   Ion Energy vs Position File                     =',
+                  ' =====================================================================',
+                  ' =   AXIS DEFINITIONS: X=Depth, Y,Z= Lateral plane of target surface.=',
+                  ' =   (If beam enters target at an angle, this tilt is in Y direction)=',
+                  ' =   Shown are: Ion Number, Energy (keV), X, Y, Z Position           =',
+                  ' ==================  CALCULATION   DATA  =============================',
+                  '  Ion Data: Name, Mass,   Energy , Energy Interval'):
+            w(l)
+        w('           ' + symbol2(ti.ion_z) + '     ' + vb_format(t.mass[0], '000.00', single=True) + '  ' +
+          vb_format(ti.energy, '##########') + 'keV    ' + vb_format(ti.file_exyz, '##########') + 'eV')
+        for l in (' =====================================================================',
+                  'Ion       Energy     Depth (X)     Y           Z       Electronic   Energy Lost to',
+                  'Number    (keV)    (Angstrom)  (Angstrom)  (Angstrom)  Stop.(eV/A)  Last Recoil(eV)',
+                  '------- ----------- ---------- ----------- ----------- -----------  ---------------'):
+            w(l)
+
+    def exyz(self, ion, e, x, y, z, de, t):
+        """0x4444f0: one line of EXYZ.txt"""
+        if 'exyz' not in self.files:
+            return
+        self._w('exyz', vb_format(ion, '0000000') + vb_format(e / 1000, ' 0.0000E+00') +
+                vb_format(x, '  0.0000E+00') + vb_format(y, '  0.0000E+00; -0.0000E+00') +
+                vb_format(z, '  0.0000E+00; -0.0000E+00') + vb_format(de, '  0.0000E+00') +
+                vb_format(t, '  0.0000E+00'))
 
     def _sputter_header(self):
         ti = self.ti
@@ -269,7 +437,8 @@ class TrimOutput(object):
 # ===================================================================
 # distribution files written at the end of the calculation (0x46a190)
 # ===================================================================
-_sqrt = math.sqrt
+_sqrt = vbmath.sqrt
+_pow = vbmath.pow
 DASH68 = '-' * 68
 EQ68 = '=' * 68
 
@@ -355,8 +524,11 @@ class TrimDistributions(object):
         out.append('        ' + 'SRIM-2013.00')
         for l in title2:
             out.append(l)
-        out.append(self.eng.out.title if self.eng.out is not None else self._title())
-        out.append('-' * 78)
+        # the title (G4fdb24) is only built when TRIMOUT.txt or COLLISON.txt
+        # is written; the files print it (and the line below) if not empty
+        if title_built(ti):
+            out.append(self.eng.out.title if self.eng.out is not None else self._title())
+            out.append('-' * 78)
         out.extend(self.kp_lines)
 
     def _title(self):
@@ -423,20 +595,20 @@ class TrimDistributions(object):
                 out.append('')
             avg = tal.g280 / n
             tal.g_a38 = avg
-            strag = _sqrt(abs(tal.g288 / n - avg ** 2))
+            strag = _sqrt(abs(tal.g288 / n - _pow(avg, 2)))
             if not (strag > 0):
                 strag = 1e-7
             tal.g_a48 = strag
             s1, s2, s3, s4 = tal.g280, tal.g288, tal.g290, tal.g298
             a = avg
-            x = ((s3 - (a * 3.0) * s2) + ((a ** 2.0) * 3.0) * s1)
-            x = x - (a ** 3.0) * n
-            skew = x / ((strag ** 3.0) * n)
+            x = ((s3 - (a * 3.0) * s2) + (_pow(a, 2.0) * 3.0) * s1)
+            x = x - _pow(a, 3.0) * n
+            skew = x / (_pow(strag, 3.0) * n)
             out.append(' Range Skewne- = ' + vb_format(skew, '000.0000') + '  &' + '= [-(X-Rp)^3]/[N*Straggle^3]')
-            y = ((s4 - (a * 4.0) * s3) + ((a ** 2.0) * 6.0) * s2)
-            y = y - ((a ** 3.0) * 4.0) * s1
-            y = y + (a ** 4.0) * n
-            kurt = y / ((strag ** 4.0) * n)
+            y = ((s4 - (a * 4.0) * s3) + (_pow(a, 2.0) * 6.0) * s2)
+            y = y - (_pow(a, 3.0) * 4.0) * s1
+            y = y + _pow(a, 4.0) * n
+            kurt = y / (_pow(strag, 4.0) * n)
             out.append(' Range Kurtosis = ' + vb_format(kurt, '000.0000') + '  &' + '= [-(X-Rp)^4]/[N*Straggle^4]')
             out.append(' Statistical definitions above are those used in VLSI implant modelling.')
             out.append(EQ68)
@@ -739,7 +911,7 @@ class TrimDistributions(object):
                 a = tal.d9b0.get(1, i) / n
                 b = tal.d9ac.get(1, i) / n
                 c = _sqrt(tal.d9b0.get(2, i) / n)
-                d = _sqrt(abs(tal.d9ac.get(2, i) / n - (tal.d9ac.get(1, i) / n) ** 2))
+                d = _sqrt(abs(tal.d9ac.get(2, i) / n - _pow(tal.d9ac.get(1, i) / n, 2)))
             out.append(('%13s' % vb_format(self.depth[i], '0000000.E+00 '))[-13:] +
                        r14(a) + r14(c) + r14(b) + r14(d))
         self._save(f, out)

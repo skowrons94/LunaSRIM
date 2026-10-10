@@ -232,6 +232,82 @@ class Range3D(object):
         return len(self.ion_number)
 
 
+def _num(field):
+    """number of a fixed width field; TRIM may put the minus sign of a
+    negative value in front of the field's blanks ('-  3.1590E-01')"""
+    return float(field.replace(' ', ''))
+
+
+_EXYZ_NUM = re.compile(r'(-?)\s*(\d\.\d+E[+-]\d+)')
+
+
+class EXYZ(object):
+    """EXYZ.txt: ion energy (keV), position (A), electronic stopping (eV/A)
+    and energy of the last recoil (eV) each time the ion has lost the energy
+    interval chosen in TRIM.IN"""
+    name = 'EXYZ.txt'
+
+    def __init__(self, directory, filename=None):
+        self.path = os.path.join(directory, filename or self.name)
+        rows = []
+        for l in _read(self.path):
+            if l[:7].isdigit():
+                v = [float(sg + x) for sg, x in _EXYZ_NUM.findall(l[7:])]
+                if len(v) == 6:
+                    rows.append([int(l[:7])] + v)
+        cols = list(zip(*rows)) if rows else [()] * 7
+        self.ion_number = _array(cols[0])
+        self.energy = _array(cols[1])
+        self.positions = [_array(cols[2]), _array(cols[3]), _array(cols[4])]
+        self.se = _array(cols[5])
+        self.recoil_energy = _array(cols[6])
+
+    def __len__(self):
+        return len(self.ion_number)
+
+    def ion(self, n):
+        """rows of ion n as (energy, x, y, z, se, recoil_energy) lists"""
+        idx = [i for i, k in enumerate(self.ion_number) if k == n]
+        return [[float(c[i]) for i in idx] for c in
+                (self.energy, self.positions[0], self.positions[1], self.positions[2], self.se,
+                 self.recoil_energy)]
+
+
+class Collisions(object):
+    """COLLISON.txt: ion collisions which displaced a target atom.  For each
+    collision: ion number, energy (keV), position (A), electronic stopping
+    (eV/A), atom hit, recoil energy (eV) and, depending on the calculation,
+    the damage it caused (displacements, vacancies, replacements,
+    interstitials; Kinchin-Pease: vacancies only)."""
+    name = 'COLLISON.txt'
+
+    def __init__(self, directory, filename=None):
+        self.path = os.path.join(directory, filename or self.name)
+        self.rows = []
+        for l in _read(self.path):
+            if not l.startswith('\xb3') or 'Summary' in l:
+                continue
+            f = l.split('\xb3')[1:-1]
+            if len(f) < 8 or not f[0].strip().isdigit():
+                continue
+            row = {'ion': int(f[0]), 'energy': _num(f[1]), 'x': _num(f[2]), 'y': _num(f[3]),
+                   'z': _num(f[4]), 'se': _num(f[5]), 'atom': f[6].strip(), 'recoil_energy': _num(f[7])}
+            rest = [x.strip() for x in f[8:] if x.strip()]
+            try:
+                vals = [float(x) for x in rest]
+            except ValueError:
+                vals = []           # '<== Start of New Cascade'
+            if len(vals) == 4:
+                row.update(displacements=vals[0], vacancies=vals[1], replacements=vals[2],
+                           interstitials=vals[3])
+            elif len(vals) == 1:
+                row.update(vacancies=vals[0])
+            self.rows.append(row)
+
+    def __len__(self):
+        return len(self.rows)
+
+
 class Results(object):
     """All output files found in a ``SRIM Outputs`` directory.  Missing files
     give ``None`` attributes."""
@@ -239,7 +315,8 @@ class Results(object):
     _files = (('ioniz', Ioniz), ('phonons', Phonons), ('e2recoil', EnergyToRecoils),
               ('vacancy', Vacancy), ('novac', NoVacancy), ('range', Range),
               ('lateral', Lateral), ('transmit', Transmit), ('backscat', Backscat),
-              ('sputter', Sputter), ('range3d', Range3D), ('trimout', TrimOut))
+              ('sputter', Sputter), ('range3d', Range3D), ('trimout', TrimOut), ('exyz', EXYZ),
+              ('collisions', Collisions))
 
     def __init__(self, directory):
         self.directory = directory

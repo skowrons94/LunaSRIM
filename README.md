@@ -9,8 +9,9 @@ covers TRIM (Monte Carlo transport of ions in matter) and the SR module
 TRIM is reproduced **ion by ion**: same random number sequence, same
 physics, same Visual Basic arithmetic (including Single precision
 variables, and the x87 math of the VB runtime) and the same output files.
-For all 32 reference cases in `tests/reference`, the files written by
-lunasrim are identical line by line to those of the original `TRIM.exe`;
+For all 44 reference cases in `tests/reference`, the files written by
+lunasrim are identical line by line to those of the original `TRIM.exe`,
+including `COLLISON.txt` and `EXYZ.txt`;
 see [Validation](#validation). The stopping and range tables are identical
 to those of `SRModule.exe` (23 reference cases).
 
@@ -197,7 +198,12 @@ More edge cases cover:
   (Si / SiO2 / Si), an 8-element steel, a plot window that does not start at
   the surface, and a 1 mm argon gas layer in front of tungsten.
 
-All 32 cases match line by line, without exceptions.
+- the collision files: `COLLISON.txt` for Kinchin-Pease, for full cascades
+  with damage counts, and with the listing of every recoil cascade, and
+  `EXYZ.txt` with stopped, transmitted and backscattered ions.
+
+All 44 cases match line by line, without exceptions, and lunasrim writes
+the same set of files as TRIM.
 
 `tests/reference_sr/` does the same for `SRModule.exe` and 23 `SR.IN`
 files: H to U ions, solids, gases and compounds (bone, Kapton, PMMA, steel,
@@ -226,7 +232,7 @@ runtime's x87 instruction sequences natively on x86-64 (`lunasrim/vbmath.py`,
 source in `tools/vbmath.S`). On other processors, or if executable memory
 is not available (`LUNASRIM_NO_NATIVE_MATH=1` forces this), it uses
 Python's `math` module and an exact model of the 64-bit square root
-instead. Then 31 of the 32 reference cases are still identical, and one
+instead. Then all reference cases but one are still identical: one
 LATERAL.txt value of `HPbLong` differs in its last digits.
 
 ## What is implemented
@@ -240,11 +246,12 @@ LATERAL.txt value of `HPbLong` differs in its last digits.
 - Output files: `TDATA`, `RANGE`, `LATERAL`, `IONIZ`, `PHONON`, `E2RECOIL`,
   `VACANCY` and `NOVAC`.
 - Per-ion files: `TRIMOUT`, `TRANSMIT`, `BACKSCAT`, `SPUTTER` and `RANGE_3D`.
+- Collision files: `COLLISON.txt` (both detail levels) and `EXYZ.txt`, with
+  readers (`Results(...).collisions`, `Results(...).exyz`).
 - SR module: stopping and range tables, and stopping for energy lists.
 
 Not implemented:
 
-- `COLLISON.txt` and `EXYZ.txt`;
 - TRIM's special modes 4-8 (neutron and ion-only calculations; partly
   present but untested);
 - auto-save and restore of a calculation.
@@ -269,7 +276,9 @@ for exact agreement:
   - The ion mass and the recoil arrays are Singles, and the stoichiometry
     sums are done in single precision.
 - **Number formatting.** VB's `Str$`/`CStr` use 15 significant digits (7 for
-  Singles), while `Format$` rounds a 17-digit conversion. Some output
+  Singles). `Format$` rounds a 17-digit conversion for scientific formats
+  (`0000.E+00`) and a 15-digit one for fixed-point formats (`0000.0`), so
+  61/20 prints as 3.1 but 5625.035 as `562503.E-02`. Some output
   columns keep a format string or a fixed-length string field from the file
   written before them.
 - **x87 precision and the VB runtime math.** SRIM's VB runtime puts the x87

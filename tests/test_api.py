@@ -52,6 +52,26 @@ class TestApi(unittest.TestCase):
         self.assertGreater(len(r.sputter), 0)
         self.assertEqual(len(r.novac.number), 100)
 
+    def test_exyz_and_collision_readers(self):
+        r = Results(os.path.join(REF, 'ExyzBack'))
+        e, x, y, z, se, t = r.exyz.ion(1)
+        self.assertEqual(e[0], 2.0)                          # starts at E0 (keV)
+        self.assertEqual(x[0], 0.0)
+        r = Results(os.path.join(REF, 'ColGas2L'))
+        self.assertTrue(any(v < 0 for v in r.exyz.positions[0]))   # backscattered ion
+        r = Results(os.path.join(REF, 'ColFC1'))
+        row = r.collisions.rows[0]
+        self.assertEqual((row['ion'], row['atom'], row['displacements'], row['vacancies']), (1, 'Si', 2.0, 1.0))
+        r = Results(os.path.join(REF, 'ColKP'))
+        self.assertIn('vacancies', r.collisions.rows[0])
+
+    def test_exyz_and_collisions_api(self):
+        trim = TRIM(Target([Layer({'Si': {'stoich': 1}}, 2.321, 2000)]), Ion('Ar', 20e3), number_ions=3,
+                    calculation=2, random_seed=5, collisions=2, exyz=100)
+        res = trim.run(self.dir)
+        self.assertGreater(len(res.exyz), 3)
+        self.assertGreater(len(res.collisions), 0)
+
     def test_copy_output_files(self):
         trim = TRIM(Target([Layer({'C': {'stoich': 1}}, 2.0, 1000)]), Ion('H', 1e5), number_ions=5,
                     random_seed=1, transmit=True)
