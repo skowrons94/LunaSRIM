@@ -353,6 +353,8 @@ class TrimEngine(object):
     def ion_stats(self):
         """0x45a200: running averages shown by TRIM (range, lateral, radial)"""
         tal = self.tal
+        if self.ion_number > 0:
+            tal.g_a50 = (tal.g244 * self.binw) / self.ion_number
         n = (self.ion_number - tal.n_back) - tal.n_trans
         if n > 0:
             tal.g_a38 = tal.g280 / n

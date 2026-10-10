@@ -10,7 +10,7 @@ import os
 
 from . import data_files
 from .trimin import f32
-from .vbfmt import vb_format, vb_str, vb_cstr
+from .vbfmt import vb_format, vb_str, vb_cstr, vb_print_num
 
 CRLF = '\r\n'
 
@@ -720,8 +720,59 @@ class TrimDistributions(object):
                        r14(a) + r14(c) + r14(b) + r14(d))
         self._save(f, out)
 
+    # ---------------------------------------------------------------- TDATA
+    def write_tdata(self):
+        """0x46c090: TDATA.txt"""
+        ti, t, tal, eng = self.ti, self.t, self.tal, self.eng
+        f, out = self._open('TDATA.txt')
+        self._title_block(out, ['=======================================',
+                                '      Data  of  TRIM  Calculation      ',
+                                '======================================='])
+        out.append('Ion = ' + symbol2(ti.ion_z) + ' (' + (' ' + str(ti.ion_z))[-2:] + ')   ' +
+                   'Ion Mass= ' + vb_format(ti.ion_mass, '000.0000', single=True))
+        out.append('Energy  = ' + ('%12s' % vb_format(ti.energy, '0000000.E+00'))[-12:] + ' keV')
+        out.append('Ion Angle to Surface = ' + vb_cstr(ti.angle) + ' degrees')
+        out.append('============= TARGET MATERIAL ======================================')
+        r11 = lambda v, fmt: ('%11s' % vb_format(v, fmt))[-11:]
+        for j, l in enumerate(ti.layers):
+            out.append('  Layer #' + vb_print_num(j + 1) + '- ' + l.name)
+            out.append('  Layer #' + vb_print_num(j + 1) + '- Bottom Depth=' + r11(t.depth[j], '0.E+00') + ' A')
+            out.append(self.dens_line[j])
+            for s in self.elem_lines[j]:
+                if s:
+                    out.append(s)
+            out.append(EQ68)
+        for i in range(1, t.nel + 1):
+            out.append('Target energies for target atom = ' + symbol2(t.z[i]))
+            out.append('    Displacement =' + vb_print_num(t.ed[i]) + 'eV, ' +
+                       'Binding =' + vb_print_num(t.lattice[i]) + 'eV, ' +
+                       'Surface =' + vb_print_num(t.surface[i]) + 'eV')
+        out.append(EQ68)
+        out.append('Depth Range of Tabulated Data=  ' + r11(eng.xmin, '000000.E+00') + '  -  ' +
+                   r11(eng.xmax, '000000.E+00') + '  Angstroms')
+        out.append(EQ68)
+        out.append('Total Ions calculated =  ' + vb_format(self.ions, '000000'))
+        out.append('Average Range         =  ' + r11(tal.g_a38, '00000.E+00') + ' Angstroms')
+        out.append('Average Straggling    =  ' + r11(tal.g_a48, '00000.E+00') + ' Angstroms')
+        out.append('Average Vacancy/Ion   =  ' + r11(tal.g_a50, '00000.E+00'))
+        out.append(EQ68)
+        out.append('Total Backscattered Ions= ' + vb_print_num(tal.n_back))
+        out.append('Total Transmitted Ions  = ' + vb_print_num(tal.n_trans))
+        out.append(EQ68)
+        out.append('See files SRIM Outputs\\*.txt for tables :')
+        out.append('   TDATA.txt    -- Details of the calculation.')
+        out.append('   RANGE.txt    -- Final distribution of Ions/Recoils')
+        out.append('   VACANCY.txt  -- Distribution of Vacancies')
+        out.append('   IONIZ.txt    -- Distribution of Ionization')
+        out.append('   PHONON.txt   -- Distribution of Phonons')
+        out.append('   E2RECOIL.txt -- Energy transferred to recoils')
+        out.append('   NOVAC.txt    -- Replacement collisions')
+        out.append('   LATERAL.txt  -- Lateral Spread of Ions')
+        self._save(f, out)
+
     def write_all(self):
         self.write_range()
+        self.write_tdata()
         self.write_ioniz()
         self.write_phonon()
         self.write_e2recoil()

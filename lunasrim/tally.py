@@ -158,3 +158,4 @@ class TrimTally(object):
         self.n_trans = 0
         # running statistics (0x45a200)
         self.g_a38 = self.g_a48 = self.g_a10 = self.g_a20 = self.g_9f8 = self.g_a08 = 0
+        self.g_a50 = 0      # vacancies per ion
