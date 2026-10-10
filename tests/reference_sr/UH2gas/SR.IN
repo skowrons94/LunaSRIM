@@ -1,0 +1,15 @@
+---Stopping/Range Input Data (Number-format: Period = Decimal Point)
+---Output File Name
+"UH2gas.txt"
+---Ion(Z), Ion Mass(u)
+92   238.05
+---Target Data: (Solid=0,Gas=1), Density(g/cm3), Compound Corr.
+1    8.99e-05    1
+---Number of Target Elements
+ 1 
+---Target Elements: (Z), Target name, Stoich, Target Mass(u)
+1   "H"   2   1.008
+---Output Stopping Units (1-8)
+ 5
+---Ion Energy : E-Min(keV), E-Max(keV)
+ 100    1000000

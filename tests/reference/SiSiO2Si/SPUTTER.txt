@@ -1,0 +1,56 @@
+============================== SRIM-2013.00 ==============================
+==============================================================================
+------------------------------------------------------------------------------
+ =====================================================================
+                       SPUTTERING   CALCULATION                       
+ =====================================================================
+ =====================================================================
+ =   AXIS DEFINITIONS: X=Depth, Y,Z= Lateral plane of target surface.=
+ =   (If beam enters target at an angle, this tilt is in Y direction)=
+ =   Shown are: Ion Number                                           =
+ =              Sputtered atom type (atomic name) and energy (eV)    =
+ =                 (Note: SBE is NOT subtracted from atom energy)    =
+ =              Point of ejection relative to ion entrance point.    =
+ =              Trajectional cosines of ejected atom.                =
+ =                  Cosine (X) is negative indicating motion away    =
+ =                     from the target surface.                      =
+ =                  Cosine (Y) and Cosine (Z) are transverse motion. =
+ =====================================================================
+ ==================  CALCULATION   DATA  =============================
+  Calculation Date= 10-10-2026, Time= 17:42:10
+  Ion Data: Name,   Mass,   Energy (keV)
+            B    11.009 150.
+  Displacement Energy of Si = 15.00000 eV
+  Latt.Binding Energy of Si = 2.00000 eV
+  SurfaceBind. Energy of Si = 4.70000 eV
+  Displacement Energy of  O = 28.00000 eV
+  Latt.Binding Energy of  O = 3.00000 eV
+  SurfaceBind. Energy of  O = 2.00000 eV
+==============================================================================
+=  This file tabulates the kinetics of ions or atoms leaving the target.     =
+=  Column #1: S= Sputtered Atom, B= Backscattered Ion, T= Transmitted Ion.   =
+=  Col.#2: Ion Number, Col.#3: Z of atom leaving, Col.#4: Atom energy (eV).  =
+=  Col.#5-7: Last location:  X= Depth into target, Y,Z= Transverse axes.     =
+=  Col.#8-10: Cosines of final trajectory.                                   =
+= *** This data file is in the same format as TRIM.DAT (see manual for uses).=
+====== TRIM Calc.=  B(150 keV) ==> Si+SiO2+Si( 4250 A) =======================
+ Ion  Atom   Energy        Depth       Lateral-Position        Atom Direction      
+ Numb Numb    (eV)          X(A)        Y(A)       Z(A)      Cos(X)  Cos(Y) Cos(Z) 
+S   74 14 .8571334E+04   0000000E+00  .1565E+03  .7843E+03  -.9487798  .3157134 -.0119113
+S   74 14 .7826638E+04   0000000E+00  .1194E+03  .7951E+03  -.8359915 -.5485969 -.0126351
+S   74 14 .1479015E+02   0000000E+00  .1284E+03  .8001E+03  -.9859607 -.1425336  .0869816
+S   74 14 .7012725E+01   0000000E+00  .1248E+03  .7886E+03  -.8215427  .5587122  .1136148
+S   74 14 .1518190E+02   0000000E+00  .1256E+03  .7995E+03  -.8986050 -.2954979  .3243300
+S   74 14 .7376599E+01   0000000E+00  .1276E+03  .7881E+03  -.9113736  .3539326 -.2100711
+S   74 14 .1528091E+04   0000000E+00  .8720E+02  .8005E+03  -.3276576 -.8876932  .3234831
+S   74 14 .2132178E+02   0000000E+00  .9638E+02  .7995E+03  -.7205693  .6891777 -.0762500
+S   87 14 .7460468E+01   0000000E+00  .4747E+01 -.4589E+01  -.7943327  .1278048 -.5938868
+S  132 14 .5275483E+02   0000000E+00  .5528E+02 -.2570E+02  -.6710535 -.6486544  .3590748
+S  132 14 .7587810E+02   0000000E+00  .5658E+02 -.2840E+02  -.7539715 -.1715578 -.6341096
+S  132 14 .1317274E+02   0000000E+00  .5182E+02 -.3066E+02  -.8015261  .5654813 -.1943883
+S  132 14 .1179045E+02   0000000E+00  .4843E+02 -.3140E+02  -.9266564 -.1790070  .3305517
+S  132 14 .3980782E+02   0000000E+00  .5177E+02 -.4394E+02  -.9668844  .0790342 -.2426687
+S  132 14 .4564250E+02   0000000E+00  .5052E+02 -.4111E+02  -.9294782  .3554692  .0985496
+S  132 14 .6322074E+02   0000000E+00  .4755E+02 -.4242E+02  -.5547183 -.7381456 -.3839643
+S  132 14 .3109630E+02   0000000E+00  .4588E+02 -.3792E+02  -.7936186 -.2787926 -.5407812
+S  132 14 .4520284E+02   0000000E+00  .4865E+02 -.3598E+02  -.7175425  .3215052 -.6178730

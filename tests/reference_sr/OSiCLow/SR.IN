@@ -1,0 +1,16 @@
+---Stopping/Range Input Data (Number-format: Period = Decimal Point)
+---Output File Name
+"OSiCLow.txt"
+---Ion(Z), Ion Mass(u)
+8   15.995
+---Target Data: (Solid=0,Gas=1), Density(g/cm3), Compound Corr.
+0    3.21    1
+---Number of Target Elements
+ 2 
+---Target Elements: (Z), Target name, Stoich, Target Mass(u)
+14   "Si"   1   28.086
+6   "C"   1   12.011
+---Output Stopping Units (1-8)
+ 3
+---Ion Energy : E-Min(keV), E-Max(keV)
+ 1.1    2000

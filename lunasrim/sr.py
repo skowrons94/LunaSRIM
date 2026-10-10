@@ -25,6 +25,7 @@ import math
 import os
 import shlex
 
+from . import vbmath
 from . import data_files
 from .stopping import electronic_stopping, nuclear_stopping
 from .tally import F32
@@ -70,6 +71,9 @@ class SrElement(object):
         self.mass = mass
 
 
+_pow = vbmath.pow
+
+
 class SrError(ValueError):
     """SRModule.exe stops with a run-time error for this input"""
 
@@ -78,7 +82,7 @@ def _sqrt(x, what):
     if x < 0:
         raise SrError('negative %s variance: SRModule.exe stops here with a run-time error '
                       '(no table is produced for this input)' % what)
-    return math.sqrt(x)
+    return vbmath.sqrt(x)
 
 
 class SrInput(object):
@@ -242,7 +246,7 @@ class StoppingTable(object):
         f[6] = 1000 * f[4]
         f[7] = float(F32(1.0 / 10.0))
         z1, m1 = si.ion_z, si.ion_mass
-        f[8] = ((m1 + mm) * 0.1 * ((z1 ** 0.6667000053372932 + mz ** 0.6667000053372932) ** 0.5)) / \
+        f[8] = ((m1 + mm) * 0.1 * _pow(_pow(z1, 0.6667000053372932) + _pow(mz, 0.6667000053372932), 0.5)) / \
                (8.462 * ((mz * z1) * m1))
         self.unit_factor = f
 
@@ -259,7 +263,7 @@ class StoppingTable(object):
         while i <= 1000:
             j = (i - 1) % 26 + 1
             k = float(math.floor(F32((i - 1) / 26))) - 3
-            E.append(MANTISSA[j] * (10.0 ** k))
+            E.append(MANTISSA[j] * _pow(10.0, k))
             if E[i] > self.emax:
                 break
             i += 1
@@ -300,10 +304,10 @@ class StoppingTable(object):
             ak = vdiv(e.mass, m1)
             A.append(ak)
             sum_a = sum_a + (ak * frac[k])
-            g = (4.0 * ak) / ((1.0 + ak) ** 2.0)
+            g = (4.0 * ak) / _pow(1.0 + ak, 2.0)
             G.append(g)
             sum_g = sum_g + (g * frac[k])
-            sc = 0.4685 / ((z1 ** 0.23) + (e.z ** 0.23))
+            sc = 0.4685 / (_pow(z1, 0.23) + _pow(e.z, 0.23))
             a.append(sc)
             ef = (sc * ak) / ((((1.0 + ak) * Z1) * e.z) * 14.4)
             epsf.append(ef)
@@ -316,18 +320,18 @@ class StoppingTable(object):
             st = [0.0] * nk
             for k in range(nk):
                 eps = energy * epsf[k]
-                s = (((eps ** 0.21226) * 0.01321) + eps) + (c * math.sqrt(eps))
-                s = (0.5 * math.log((1.1383 * eps) + 1.0)) / s
+                s = ((_pow(eps, 0.21226) * 0.01321) + eps) + (c * vbmath.sqrt(eps))
+                s = (0.5 * vbmath.log((1.1383 * eps) + 1.0)) / s
                 s = snf[k] * s
                 sv[k] = s
-                t = 1.0 / ((6.684 / (eps ** 1.0494)) + ((0.197 / (eps ** 1.6991)) + 4.0))
+                t = 1.0 / ((6.684 / _pow(eps, 1.0494)) + ((0.197 / _pow(eps, 1.6991)) + 4.0))
                 t = ((G[k] * t) * snf[k]) / epsf[k]
                 st[k] = t
             return sv, st
 
         # starting point: 1.1 eV
         i350, i1e0, i198, i214 = 1, 0, 2, 0
-        en = MANTISSA[i350 + 1] * (10 ** i1e0)
+        en = MANTISSA[i350 + 1] * _pow(10, i1e0)
         sv, st = nuclear(en, 0.19593)
         sn = 0.0
         stt = 0.0
@@ -368,8 +372,8 @@ class StoppingTable(object):
                 i198 = 26
             if i198 == 1:
                 i214 = i214 + 1
-            lo = MANTISSA[i350] * (10 ** i1e0)
-            hi = MANTISSA[i198] * (10 ** i214)
+            lo = MANTISSA[i350] * _pow(10, i1e0)
+            hi = MANTISSA[i198] * _pow(10, i214)
             if emax_ev < hi:
                 hi = emax_ev * 1
             de = (hi - lo) / nsub
@@ -389,7 +393,7 @@ class StoppingTable(object):
                     sn = sn + (frac[k] * sv[k])
                     s310 = s310 + ((frac[k] * A[k]) * sv[k])
                     sdc = sdc + ((frac[k] * A[k]) * st[k])
-                    s1b0 = s1b0 + ((frac[k] * ((1.0 - A[k]) ** 2.0)) * st[k])
+                    s1b0 = s1b0 + ((frac[k] * _pow(1.0 - A[k], 2.0)) * st[k])
                 ek = en / 1000.0
                 while E[idx] < ek:
                     idx += 1
@@ -414,7 +418,7 @@ class StoppingTable(object):
                 if x260 >= 0.01:
                     lat = (((((r2 - (2.0 * lat)) * x14c) - x178) * x290) / x108) + lat
                 else:
-                    lat = (0.5 * r2) - (((en ** 2.0) * rp) / (x88 - (0.5 * s1b0)))
+                    lat = (0.5 * r2) - ((_pow(en, 2.0) * rp) / (x88 - (0.5 * s1b0)))
             if en >= emax_ev:
                 break
         if last is None or en > last:
@@ -541,8 +545,8 @@ class StoppingList(object):
         if not (corr == 1 or corr == 0):
             for i, en in enumerate(E):
                 if en < 10000:
-                    x = math.sqrt(vdiv(en, m1) / 25)
-                    f = 1 + (corr - 1) / (math.exp((x - 7.0) * 1.48) - (-1.0))
+                    x = vbmath.sqrt(vdiv(en, m1) / 25)
+                    f = 1 + (corr - 1) / (vbmath.exp((x - 7.0) * 1.48) - (-1.0))
                     se[i] = se[i] * f
         self.rows = list(zip(E, se, sn))
 

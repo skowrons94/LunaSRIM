@@ -367,7 +367,12 @@ class TrimDistributions(object):
         return (title + '=' * 78)[:78]
 
     def _ion_line(self):
-        return ' Ion    = ' + symbol2(self.ti.ion_z) + '   Energy =' + vb_str(self.ti.energy) + ' ' + ' keV'
+        # RANGE.txt writes the energy with its leading zero (0.1), the other
+        # files use Str$(E) (.1)
+        e = vb_cstr(self.ti.energy)
+        if e.startswith('.'):
+            e = '0' + e
+        return ' Ion    = ' + symbol2(self.ti.ion_z) + '   Energy = ' + e + ' ' + ' keV'
 
     def _target_block(self, out, width_sep):
         """layers, widths, densities and composition"""

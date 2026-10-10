@@ -5,12 +5,14 @@ arrays is the ion, indices 1..n are the target elements (in TRIM.IN order).
 """
 import math
 
-from . import data_files
+from . import data_files, vbmath
 from .stopping import electronic_stopping_element, phase_factor
 from .trimin import f32
 from .tally import F32
 
 PI = 3.1415926          # TRIM's value of pi
+_pow = vbmath.pow
+_sqrt = vbmath.sqrt
 
 
 def vbint(x):
@@ -141,21 +143,21 @@ class TrimTarget(object):
         for j, l in enumerate(ti.layers):
             n = l.density * 0.6022 / self.mean_mass[j]
             self.N.append(n)
-            self.L0.append(n ** f32(-1.0 / 3.0))
-            self.L0pi.append(self.L0[j] / math.sqrt(PI))
+            self.L0.append(_pow(n, f32(-1.0 / 3.0)))
+            self.L0pi.append(self.L0[j] / _sqrt(PI))
             self.m_ratio.append(m1 / self.mean_mass[j])
         for j in range(nlay):
             zt = self.mean_z[j]
-            a = (0.5292 * 0.8853) / (zt ** 0.23 + z1 ** 0.23)
+            a = (0.5292 * 0.8853) / (_pow(zt, 0.23) + _pow(z1, 0.23))
             self.a_ion.append(a)
             ef = (a * self.mean_mass[j]) / ((zt * z1) * 14.4 * (m1 + self.mean_mass[j]))
             self.eps_fac.append(ef)
             mr = self.m_ratio[j]
-            self.emin_fac.append(((5 * ef) * (1 + mr) ** 2) / (4 * mr))
-            self.bohr.append((177 * z1) * math.sqrt(zt * self.N[j]))
-            self.strag_low.append(((((3.2 * 12.0) * self.N[j]) / self.mass1000[0]) * (float(zt + z1) ** (8.0 / 3.0))) ** 0.5)
-            self.c724.append((float(zt) ** (-7.0 / 3.0)) * 0.01)
-            self.c728.append(((float(zt) ** (2.0 / 3.0)) * 0.1334) / math.sqrt(self.mean_mass[j]))
+            self.emin_fac.append(((5 * ef) * _pow(1 + mr, 2)) / (4 * mr))
+            self.bohr.append((177 * z1) * _sqrt(zt * self.N[j]))
+            self.strag_low.append(_pow((((3.2 * 12.0) * self.N[j]) / self.mass1000[0]) * _pow(zt + z1, 8.0 / 3.0), 0.5))
+            self.c724.append(_pow(zt, -7.0 / 3.0) * 0.01)
+            self.c728.append((_pow(zt, 2.0 / 3.0) * 0.1334) / _sqrt(self.mean_mass[j]))
         # pairwise constants: atoms 0..nel (0 = ion) x target elements 1..nel
         n_at = nel + 1
         self.pair_m = [[0.0] * n_at for i in range(n_at)]
@@ -166,8 +168,8 @@ class TrimTarget(object):
             for k in range(1, n_at):
                 m = self.mass[i] / self.mass[k]
                 self.pair_m[i][k] = m
-                self.pair_kin[i][k] = (4.0 * m) / (1 + m) ** 2
-                a = (0.5292 * 0.8853) / (float(self.z[k]) ** 0.23 + float(self.z[i]) ** 0.23)
+                self.pair_kin[i][k] = (4.0 * m) / _pow(1 + m, 2)
+                a = (0.5292 * 0.8853) / (_pow(self.z[k], 0.23) + _pow(self.z[i], 0.23))
                 self.pair_a[i][k] = a
                 self.pair_eps[i][k] = a / ((self.z[i] * self.z[k]) * 14.41 * (1 + m))
         self.build_stopping()
@@ -177,7 +179,8 @@ class TrimTarget(object):
         """Electronic stopping tables S[atom][layer][k] in eV/A on the energy
         grid E_k = exp(G)**(k-1) eV, k = 1..1000, G = ln(E0+1)/999."""
         e0 = self.ti.energy
-        g = math.log(e0 * 1000 + 1) / 999.0
+        # Log(1 + 1000 E0) / 999: the 80-bit Log is divided before rounding
+        g = vbmath.log_div(e0 * 1000 + 1, 999.0)
         self.grid_g = g
         self.stop = []
         for p in range(self.nel + 1):
@@ -185,7 +188,7 @@ class TrimTarget(object):
             # energy grid in keV/u
             egrid = [0.0] * 1001
             egrid[1] = 0.001 / m1
-            eg = math.exp(g)
+            eg = vbmath.exp(g)
             for k in range(2, 1001):
                 egrid[k] = egrid[k - 1] * eg
             per_layer = []

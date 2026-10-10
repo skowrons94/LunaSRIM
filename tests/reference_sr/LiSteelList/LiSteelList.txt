@@ -1,0 +1,12 @@
+Ion = Lithium     , Mass = 7.016
+Tgt = Fe + Cr + Ni + Mn (Solid), Density = 7.93 g/cm3
+Stopping Units = L.S.S. reduced units
+Energy(keV)  S(Elec)    S(Nuc)
+1.000E-02   1.447E-02  5.369E-02 
+5.000E-01   1.023E-01  2.869E-01 
+2.000E+00   2.047E-01  3.612E-01 
+1.550E+01   5.757E-01  2.805E-01 
+1.000E+02   1.770E+00  1.122E-01 
+7.770E+02   5.246E+00  2.522E-02 
+3.000E+03   6.260E+00  8.518E-03 
+4.500E+04   1.483E+00  8.333E-04 

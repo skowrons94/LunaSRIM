@@ -9,7 +9,7 @@ reproduces them line by line (apart from the calculation date).
 | AuSiKP | Kinchin-Pease | heavy ion, 1 MeV Au in Si |
 | ArSiFC | full cascade  | recoil cascades |
 | HW     | full cascade  | 45 deg incidence, backscattering |
-| HeAuC  | Kinchin-Pease | two layers, transmission (only 2 last-digit differences, see below) |
+| HeAuC  | Kinchin-Pease | two layers, transmission |
 | HeN    | Kinchin-Pease | gas target, 22 cm wide layer |
 | NTaN   | full cascade  | compound + gas layer, 60 deg, sputtering |
 | NTaNFC | full cascade  | as NTaN, full cascades |
@@ -26,19 +26,25 @@ reproduces them line by line (apart from the calculation date).
 | WebAirPMMA  | Kinchin-Pease | PMMA / dry air (gas) / GaAs, 7 elements, 10 deg |
 | WebKaptonFC | full cascade  | Si in Kapton from the compound dictionary |
 
-Known differences (last printed digit only):
+| AuCKP       | Kinchin-Pease | 2 MeV Au in graphite (heavy ion, light target) |
+| HPbLong     | Kinchin-Pease | 10 MeV H through 0.4 mm Pb |
+| NeSiGlance  | full cascade  | 1 keV Ne on Si at 85 deg (mostly backscattered) |
+| HeBragg     | Kinchin-Pease | water / SiO2 with Bragg corrections 0.92 and 1.07 |
+| SiSiO2Si    | full cascade  | Si / SiO2 / Si, the same element in three layers |
+| ArWLow      | monolayer / sputtering | 100 eV Ar on W |
+| XeSiHigh    | Kinchin-Pease | 200 MeV Xe in Si |
+| LiNiWin     | Kinchin-Pease | plot window 5000 .. 17500.5 A, 30 deg |
+| CSteel8     | Kinchin-Pease | 3 MeV C in an 8-element steel |
+| UAgFCSP     | full cascade  | 50 keV U on Ag / AgAu, 30 deg |
+| HeArGasW    | Kinchin-Pease | 2 MeV He through 1 mm Ar gas into W |
+| NAlGaAsSP   | monolayer / sputtering | 5 keV N on AlGaAs at 60 deg |
 
-* HeAuC: two direction cosines of transmitted ions (TRANSMIT.txt/TRIMOUT.txt).
-* HKaptonBR, HeMylarAir: direction cosines of some transmitted ions
-  (TRANSMIT.txt/TRIMOUT.txt, 7th decimal); positions and energies agree.
-  In HeMylarAir the ions cross 0.5 mm of gas, so the round-off of the many
-  direction updates accumulates.
-* UFeKP: the lateral position of ion 29 (RANGE_3D.txt, 5th digit) and two
-  LATERAL.txt values that depend on it.
-
-For UFeKP the whole trajectory of ion 29 (3599 collisions) was checked
-against TRIM.exe running in an x86 emulator with Python implementations of
-the VB runtime math functions: they agree bit for bit.  The differences
-with TRIM.exe under wine therefore come from the last bits of the
-floating point library functions (x87 / msvbvm50 versus the C library used
-by Python), which occasionally change a printed digit.
+All files agree line by line with lunasrim's native VB runtime math
+(`lunasrim/vbmath.py`).  Before it was used, HeAuC, UFeKP, HKaptonBR,
+HeMylarAir, HeArGasW, HPbLong, CSteel8 and XeSiHigh had a few last-digit
+differences, and in HeArGasW one ion took a visibly different path.  The
+cause was found by running TRIM.exe under winedbg (ion 166 of HeArGasW,
+reproduced as a one-ion run by giving its random number state as the two
+seeds of TRIM.IN): the x87 control word is 0x137f (64-bit precision), so
+`Sqr` rounds twice, and `Exp`, `^`, `Log` and `Atn` are x87 sequences of the
+VB runtime.

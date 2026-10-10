@@ -1,0 +1,24 @@
+---Stopping/Range Input Data (Number-format: Period = Decimal Point)
+---Output File Name
+"HePMMAList.txt"
+---Ion(Z), Ion Mass(u)
+2   4.003
+---Target Data: (Solid=0,Gas=1), Density(g/cm3), Compound Corr.
+0    1.19    0.98
+---Number of Target Elements
+ 3 
+---Target Elements: (Z), Target name, Stoich, Target Mass(u)
+1   "H"   8   1.008
+6   "C"   5   12.011
+8   "O"   2   15.999
+---Output Stopping Units (1-8)
+ 2
+---Ion Energy : E-Min(keV), E-Max(keV)
+ 0    0
+1
+10
+100
+1000
+10000
+100000
+0

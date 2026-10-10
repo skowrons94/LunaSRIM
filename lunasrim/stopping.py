@@ -22,7 +22,12 @@ Structure of the SRIM calculation
 """
 import math
 
-from . import data_files
+from . import data_files, vbmath
+
+_pow = vbmath.pow
+_log = vbmath.log
+_exp = vbmath.exp
+_sqrt = vbmath.sqrt
 
 # noble gases -- no phase correction is applied to those
 NOBLE_GASES = (2, 10, 18, 36, 54, 86)
@@ -34,14 +39,14 @@ PHASE_FACTOR = 0.92
 def _poly(coef, x):
     s = 0.0
     for k, c in enumerate(coef):
-        s += c * x ** k
+        s += c * _pow(x, k)
     return s
 
 
 def _fit(c, e):
     """SRIM 10 parameter stopping fit (c is the 10 element coefficient list)."""
-    slow = c[0] * e ** c[1] + c[2] * e ** c[3] + c[8] * e ** 0.5
-    shigh = (c[4] / e ** c[5]) * (math.log(c[6] / e + c[7] * e) + c[9] / e ** 0.2)
+    slow = c[0] * _pow(e, c[1]) + c[2] * _pow(e, c[3]) + c[8] * _pow(e, 0.5)
+    shigh = (c[4] / _pow(e, c[5])) * (_log(c[6] / e + c[7] * e) + c[9] / _pow(e, 0.2))
     return slow * shigh / (slow + shigh)
 
 
@@ -51,21 +56,21 @@ def bethe(z1, z2, e, data=None, phase=0):
     e is the energy in keV/u, phase 0 = solid, 1 = gas target.
     """
     t = data_files.element(z2) if data is None else data[z2]
-    beta2 = 1.0 - 1.0 / (1.0 + e / 931494.0) ** 2
-    lx = math.log(e / 1000.0)
+    beta2 = 1.0 - 1.0 / _pow(1.0 + e / 931494.0, 2)
+    lx = _log(e / 1000.0)
     shell_d = 0.0 if phase == 1 else _poly(t.shell_d, lx)
     shell_c = _poly(t.shell_c, lx)
     if phase == 1:
         mean_i = t.i_gas[0] if z1 == 1 else t.i_gas[1]
-        q = 1.35 / e ** 0.4
+        q = 1.35 / _pow(e, 0.4)
     else:
         mean_i = t.i_solid
-        q = 1.5 / e ** 0.4 + 45000.0 / (z2 * e ** 1.6)
+        q = 1.5 / _pow(e, 0.4) + 45000.0 / (z2 * _pow(e, 1.6))
     barkas = (z1 * (0.001 * e) * q) / (0.001 * e + q)
-    y = (z1 / 137.036) ** 2 / beta2
+    y = _pow(z1 / 137.036, 2) / beta2
     bloch = -y * (1.20206 - y * (1.042 + -0.8549 * y + 0.343 * y * y))
-    l = (math.log(1022000.0 * beta2 / (1.0 - beta2)) - beta2 - shell_d - shell_c
-         - math.log(mean_i) + barkas + bloch)
+    l = (_log(1022000.0 * beta2 / (1.0 - beta2)) - beta2 - shell_d - shell_c
+         - _log(mean_i) + barkas + bloch)
     return (z1 * z1 * z2) / (beta2 * 1961.16) * l
 
 
@@ -81,20 +86,21 @@ def _light_ion(coef, z1, z2, e, emax, data, phase=0):
         sb = bethe(z1, z2, ehigh, data, phase)
         return s + (sb - s) * (e - emax) / (ehigh - emax)
     if e < emin:
-        return s * (e / emin) ** 0.5
+        return s * _pow(e / emin, 0.5)
     return s
 
 
 def _log10(x):
-    return math.log(x) / math.log(10.0)
+    # Log(x) / Log(10): the 80-bit Log(x) is divided before rounding
+    return vbmath.log_div(x, _log(10.0))
 
 
 def _hi_charge(hi, e):
     """high energy effective charge correction (e in keV/u)."""
     d = _log10(e) - hi[1]
     w = hi[3] if d >= 0 else hi[2]
-    x = math.exp(-d / w) + 1.0
-    return hi[0] + (1.0 - hi[0]) / x + hi[4] * math.exp(-abs(1.3 + hi[1] - _log10(e)))
+    x = _exp(-d / w) + 1.0
+    return hi[0] + (1.0 - hi[0]) / x + hi[4] * _exp(-abs(1.3 + hi[1] - _log10(e)))
 
 
 def electronic_stopping_element(z1, z2, e_per_u, data=None, phase=0):
@@ -115,12 +121,12 @@ def electronic_stopping_element(z1, z2, e_per_u, data=None, phase=0):
     # heavy ions: scaled helium stopping
     emin, emax = 2.0, 30000.0
     ec = min(max(e_per_u, emin), emax)
-    lne = math.log(ec)
+    lne = _log(ec)
     ion = d[z1]
     s = (_light_ion(t.he_coef, 2, z2, ec, 2000.0, d, phase) * _poly(ion.ion_poly, lne)
          * z1 * z1 / 4.0 * _poly(t.tgt_poly, lne))
     if e_per_u < emin:
-        return s * (e_per_u / emin) ** 0.5
+        return s * _pow(e_per_u / emin, 0.5)
     if e_per_u > emax:
         r_hi = _hi_charge(ion.hi, e_per_u) * bethe(2, z2, e_per_u, d, phase)
         r_lo = _hi_charge(ion.hi, emax) * bethe(2, z2, emax, d, phase)
@@ -145,10 +151,10 @@ def fade_correction(factor, e_per_u, z1=1):
     """The phase correction factor is applied fully at low velocity and
     fades out at high velocity (around 1.2 MeV/u for protons, 400 keV/u for
     heavier ions)."""
-    x = 1.48 * (math.sqrt(e_per_u / 25.0) - (7.0 if z1 == 1 else 4.0))
+    x = 1.48 * (_sqrt(e_per_u / 25.0) - (7.0 if z1 == 1 else 4.0))
     if x > 700:
         return 1.0
-    return 1.0 + (factor - 1.0) / (1.0 + math.exp(x))
+    return 1.0 + (factor - 1.0) / (1.0 + _exp(x))
 
 
 def electronic_stopping(z1, m1, z2, e_kev, phase=0, data=None, corr=1.0):
@@ -181,7 +187,7 @@ def compound_correction(corr, e_per_u):
 # --------------------------------------------------------------------------
 def reduced_energy(z1, m1, z2, m2, e_kev):
     """ZBL reduced energy (e in keV)."""
-    return e_kev * 32.53 * m2 / (z1 * z2 * (m1 + m2) * (z1 ** 0.23 + z2 ** 0.23))
+    return e_kev * 32.53 * m2 / (z1 * z2 * (m1 + m2) * (_pow(z1, 0.23) + _pow(z2, 0.23)))
 
 
 def nuclear_stopping(z1, m1, z2, m2, e_kev, snuc=None):
@@ -193,21 +199,21 @@ def nuclear_stopping(z1, m1, z2, m2, e_kev, snuc=None):
     tab = data_files.load_snuc() if snuc is None else snuc
     eps = reduced_energy(z1, m1, z2, m2, e_kev)
     if eps > 30:
-        sn = math.log(eps) / (2.0 * eps)
+        sn = _log(eps) / (2.0 * eps)
     else:
         c = tab[(z1, z2)]
-        sn = 0.5 * math.log(1.0 + c[0] * eps) / (eps + c[1] * eps ** c[2] + c[3] * eps ** 0.5)
-    return sn * 8.462 * z1 * z2 * m1 / ((m1 + m2) * (z1 ** 0.23 + z2 ** 0.23))
+        sn = 0.5 * _log(1.0 + c[0] * eps) / (eps + c[1] * _pow(eps, c[2]) + c[3] * _pow(eps, 0.5))
+    return sn * 8.462 * z1 * z2 * m1 / ((m1 + m2) * (_pow(z1, 0.23) + _pow(z2, 0.23)))
 
 
 def universal_nuclear_stopping(z1, m1, z2, m2, e_kev):
     """ZBL universal nuclear stopping (eV/(1E15 atoms/cm2)), as used by TRIM."""
     eps = reduced_energy(z1, m1, z2, m2, e_kev)
     if eps > 30:
-        sn = math.log(eps) / (2.0 * eps)
+        sn = _log(eps) / (2.0 * eps)
     else:
-        sn = math.log(1.0 + 1.1383 * eps) / (2.0 * (eps + 0.01321 * eps ** 0.21226 + 0.19593 * eps ** 0.5))
-    return sn * 8.462 * z1 * z2 * m1 / ((m1 + m2) * (z1 ** 0.23 + z2 ** 0.23))
+        sn = _log(1.0 + 1.1383 * eps) / (2.0 * (eps + 0.01321 * _pow(eps, 0.21226) + 0.19593 * _pow(eps, 0.5)))
+    return sn * 8.462 * z1 * z2 * m1 / ((m1 + m2) * (_pow(z1, 0.23) + _pow(z2, 0.23)))
 
 
 # --------------------------------------------------------------------------

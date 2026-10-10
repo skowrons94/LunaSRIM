@@ -8,11 +8,11 @@ covers TRIM (Monte Carlo transport of ions in matter) and the SR module
 
 TRIM is reproduced **ion by ion**: same random number sequence, same
 physics, same Visual Basic arithmetic (including Single precision
-variables) and the same output files. For the reference cases in
-`tests/reference`, the files written by lunasrim are identical line by line
-to those of the original `TRIM.exe`. The only exceptions are a few last
-digits caused by math-library rounding; see [Validation](#validation).
-The stopping and range tables are identical to those of `SRModule.exe`.
+variables, and the x87 math of the VB runtime) and the same output files.
+For all 32 reference cases in `tests/reference`, the files written by
+lunasrim are identical line by line to those of the original `TRIM.exe`;
+see [Validation](#validation). The stopping and range tables are identical
+to those of `SRModule.exe` (23 reference cases).
 
 No Windows, wine or docker is needed to run calculations; the package is
 pure Python (numpy is optional and only used by the result readers).
@@ -187,15 +187,24 @@ at once (`LUNASRIM_MAX_JOBS`, default 2).
 - several layers, including non-integer widths;
 - oblique incidence and a plot window.
 
-All 20 cases match line by line. In 4 cases a few printed values differ in
-their last digit (transmitted-ion direction cosines, one lateral position).
-`tests/reference/README.md` lists these differences and explains them: they
-come from round-off in the floating-point math library.
+More edge cases cover:
 
-`tests/reference_sr/` does the same for `SRModule.exe` and 16 `SR.IN`
-files: H to U ions, solids, gases and compounds (bone, Kapton, air), all 8
-stopping units, eV to GeV energies, and Bragg corrections, in both table
-and list modes. All of them are identical to the original output.
+- heavy ions in light targets (2 MeV Au in C) and light ions in heavy ones
+  (10 MeV H through 0.4 mm of Pb);
+- very low (100 eV Ar on W) and very high (200 MeV Xe in Si) energies;
+- glancing incidence (1 keV Ne on Si at 85 degrees);
+- Bragg corrections different from 1, the same element in several layers
+  (Si / SiO2 / Si), an 8-element steel, a plot window that does not start at
+  the surface, and a 1 mm argon gas layer in front of tungsten.
+
+All 32 cases match line by line, without exceptions.
+
+`tests/reference_sr/` does the same for `SRModule.exe` and 23 `SR.IN`
+files: H to U ions, solids, gases and compounds (bone, Kapton, PMMA, steel,
+air, CO2, water), all 8 stopping units, eV to GeV energies, and Bragg
+corrections, in both table and list modes. All of them are identical to the
+original output. Two more inputs make `SRModule.exe` stop with a run-time
+error; lunasrim raises `SrError` for them.
 
 ```sh
 python -m unittest discover tests        # or: pytest
@@ -211,18 +220,14 @@ tools/run_real_sr.sh some/dir            # run SRModule.exe on some/dir/SR.IN
 tools/validate_sr.py some/dir            # compare lunasrim's table with it
 ```
 
-Known differences, in the last printed digit:
-
-- In `HeAuC`, two of the 298 transmitted ions have a direction cosine that
-  differs in the 7th digit.
-- In `UFeKP`, one ion's final lateral position differs in the 5th digit.
-
-The trajectory of that UFeKP ion was compared with TRIM.exe running in an
-x86 emulator, collision by collision (3599 collisions), and the two agree
-exactly. The emulator replaces the VB runtime's math functions with Python
-ones. So these rare differences come from the last bits of the math library
-(the Windows runtime under wine versus the C library behind Python), not
-from the algorithm.
+Exact agreement needs the arithmetic of the VB runtime, not just the same
+formulas (see [How it was done](#how-it-was-done)). lunasrim runs the
+runtime's x87 instruction sequences natively on x86-64 (`lunasrim/vbmath.py`,
+source in `tools/vbmath.S`). On other processors, or if executable memory
+is not available (`LUNASRIM_NO_NATIVE_MATH=1` forces this), it uses
+Python's `math` module and an exact model of the 64-bit square root
+instead. Then 31 of the 32 reference cases are still identical, and one
+LATERAL.txt value of `HPbLong` differs in its last digits.
 
 ## What is implemented
 
@@ -267,6 +272,20 @@ for exact agreement:
   Singles), while `Format$` rounds a 17-digit conversion. Some output
   columns keep a format string or a fixed-length string field from the file
   written before them.
+- **x87 precision and the VB runtime math.** SRIM's VB runtime puts the x87
+  FPU in 64-bit precision (control word 0x137F, read with winedbg inside
+  TRIM's collision loop and in SRModule.exe). `Sqr` is therefore rounded to
+  64 bits and then to a Double, which often differs from a correctly
+  rounded square root for arguments just below 1 (the normalisation of the
+  direction cosines). `Exp` and `^` are Microsoft C runtime x87 sequences
+  (`fyl2x`, `f2xm1`, `fscale` at 64-bit precision); `Log`, `Atn`, `Sin` and
+  `Cos` return the 80-bit result of one x87 instruction. They differ from
+  the C library in the last bit for about 0.1 % of the arguments. In a gas
+  layer the deflections are tiny, so `sqrt(1 - cx^2)` cancels and amplifies
+  such a bit until a trajectory changes. These routines were checked
+  against msvbvm50.dll itself: a small Windows program calls its exports
+  under wine on 600,000 random arguments, and lunasrim's routines agree on
+  all of them.
 
 ## Repository structure
 
@@ -281,6 +300,7 @@ for exact agreement:
   - `trimin.py`: TRIM.IN.
   - `rng.py`: random numbers.
   - `vbfmt.py`: VB number formatting.
+  - `vbmath.py`: VB runtime math (x87 routines of msvbvm50.dll).
   - `tally.py`: distributions.
   - `compounds.py`: SRIM's compound dictionary.
   - `web/`: the web application (FastAPI server and browser front end).

@@ -1,0 +1,16 @@
+---Stopping/Range Input Data (Number-format: Period = Decimal Point)
+---Output File Name
+"NeGaAs.txt"
+---Ion(Z), Ion Mass(u)
+10   19.992
+---Target Data: (Solid=0,Gas=1), Density(g/cm3), Compound Corr.
+0    5.32    1.0
+---Number of Target Elements
+ 2 
+---Target Elements: (Z), Target name, Stoich, Target Mass(u)
+31   "Ga"   1   69.723
+33   "As"   1   74.922
+---Output Stopping Units (1-8)
+ 6
+---Ion Energy : E-Min(keV), E-Max(keV)
+ 0.5    20000

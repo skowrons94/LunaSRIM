@@ -1,0 +1,30 @@
+UAgFCSP
+Ion: Z, Mass [amu], Energy [keV], Angle [degrees], Number Ions, Bragg Corr, AutoSave Number
+92 238.05 50 30 20 1 0
+Cascades(1=Kitchn-Peese, 2=Full-Cascade, 3=Sputtering, 4-5=Ions;6-7=Neutrons), Random Number Seed, Reminders
+2 61 0
+Diskfiles (0=no,1=yes): RANGES.txt, BACKSCATT.txt, TRANSMIT.txt, Sputtered, COLLISIONS.txt(0=no, 1=Ion, 2=Ion+Recoils), Special EXYZ.txt file
+1 1 1 1 0 0
+Target material : Number of Elements, Number of Layers
+"AgAu" 2 2
+PlotType (0-5); Plot Depths: Xmin, Xmax(Ang.) [=0 0 for Viewing Full Target]
+5 0 0
+Target Elements:    Z   Mass [amu]
+Atom 1 = Ag =     47 107.87
+Atom 2 = Au =     79 196.97
+Layer    Layer Name   Width Density  Ag(47) Au(79)
+Number   Description  (Ang) (g/cm^3)Stoich Stoich
+1 "Ag" 150 10.5 1 0
+2 "AgAu" 300 15 1 1
+0  Target layer phases (0=Solid, 1=Gas)
+0 0
+Target Compound Corrections (Bragg)
+ 1 1
+Individual target atom displacement energies (eV)
+ 25 25
+Individual target atom lattice binding energies (eV)
+ 3 3
+Individual target atom surface binding energies (eV)
+ 2.97 3.8
+Stopping Power Version (1=2011, 0=2011)
+0

@@ -17,11 +17,15 @@ from lunasrim.srim import run_trim        # noqa: E402
 REF = os.path.join(HERE, 'reference')
 
 # lines known to differ from TRIM.exe: {case: {file: number of lines}}
-# (rare last-digit differences, see tests/reference/README.md)
-KNOWN = {'HeAuC': {'TRANSMIT.txt': 2, 'TRIMOUT.txt': 2},
-         'UFeKP': {'LATERAL.txt': 2, 'RANGE_3D.txt': 1},
-         'HKaptonBR': {'TRANSMIT.txt': 1, 'TRIMOUT.txt': 1},
-         'HeMylarAir': {'TRANSMIT.txt': 21, 'TRIMOUT.txt': 21}}
+# (none since lunasrim uses the Visual Basic runtime math, see lunasrim/vbmath.py;
+# without the native x87 routines a few last digits may differ)
+KNOWN = {}
+try:
+    from lunasrim import vbmath as _vbmath
+    if not _vbmath.NATIVE:
+        KNOWN = {'HPbLong': {'LATERAL.txt': 1}}
+except ImportError:
+    pass
 
 
 def _lines(path):

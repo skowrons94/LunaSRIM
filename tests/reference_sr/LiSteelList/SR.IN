@@ -1,0 +1,27 @@
+---Stopping/Range Input Data (Number-format: Period = Decimal Point)
+---Output File Name
+"LiSteelList.txt"
+---Ion(Z), Ion Mass(u)
+3   7.016
+---Target Data: (Solid=0,Gas=1), Density(g/cm3), Compound Corr.
+0    7.93    1
+---Number of Target Elements
+ 4 
+---Target Elements: (Z), Target name, Stoich, Target Mass(u)
+26   "Fe"   70   55.845
+24   "Cr"   19   51.996
+28   "Ni"   10   58.693
+25   "Mn"   1   54.938
+---Output Stopping Units (1-8)
+ 8
+---Ion Energy : E-Min(keV), E-Max(keV)
+ 0    0
+0.01
+0.5
+2
+15.5
+100
+777
+3000
+45000
+0

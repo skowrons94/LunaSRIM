@@ -1,0 +1,46 @@
+====== AgAu =======
+        SRIM-2013.00
+=======================================
+      Data  of  TRIM  Calculation      
+=======================================
+====== TRIM Calc.=  U(50 keV) ==> Ag+AgAu(  450 A) ===========================
+------------------------------------------------------------------------------
+Ion =  U (92)   Ion Mass= 238.0500
+Energy  = 5000000.E-05 keV
+Ion Angle to Surface = 30 degrees
+============= TARGET MATERIAL ======================================
+  Layer # 1 - Ag
+  Layer # 1 - Bottom Depth=     2.E+02 A
+  Layer # 1- Density = 5.861E22 atoms/cm3 = 10.5 g/cm3
+  Layer # 1- Ag = 100  Atomic Percent = 100  Mass Percent
+====================================================================
+  Layer # 2 - AgAu
+  Layer # 2 - Bottom Depth=     5.E+02 A
+  Layer # 2- Density = 5.926E22 atoms/cm3 = 15 g/cm3
+  Layer # 2- Ag = 50   Atomic Percent = 35.3 Mass Percent
+  Layer # 2- Au = 50   Atomic Percent = 64.6 Mass Percent
+====================================================================
+Target energies for target atom = Ag
+    Displacement = 25 eV, Binding = 3 eV, Surface = 2.97 eV
+Target energies for target atom = Au
+    Displacement = 25 eV, Binding = 3 eV, Surface = 3.8 eV
+====================================================================
+Depth Range of Tabulated Data=  000000.E+00  -  450000.E-03  Angstroms
+====================================================================
+Total Ions calculated =  000020
+Average Range         =   77289.E-03 Angstroms
+Average Straggling    =   41151.E-03 Angstroms
+Average Vacancy/Ion   =   10984.E-01
+====================================================================
+Total Backscattered Ions=  0 
+Total Transmitted Ions  =  0 
+====================================================================
+See files SRIM Outputs\*.txt for tables :
+   TDATA.txt    -- Details of the calculation.
+   RANGE.txt    -- Final distribution of Ions/Recoils
+   VACANCY.txt  -- Distribution of Vacancies
+   IONIZ.txt    -- Distribution of Ionization
+   PHONON.txt   -- Distribution of Phonons
+   E2RECOIL.txt -- Energy transferred to recoils
+   NOVAC.txt    -- Replacement collisions
+   LATERAL.txt  -- Lateral Spread of Ions

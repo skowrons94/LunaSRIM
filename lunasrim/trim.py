@@ -9,18 +9,21 @@ numbered 0..nlay-1 here (TRIM uses 1..nlay).
 """
 import math
 
+from . import vbmath
 from .rng import TrimRandom
 from .trim_setup import TrimTarget, PI
 from .trimin import f32
 from .tally import F32
 from .tally import TrimTally, vb_int
 
-_sqrt = math.sqrt
-_log = math.log
-_exp = math.exp
-_cos = math.cos
-_sin = math.sin
-_atan = math.atan
+# Visual Basic runtime math (see vbmath): TRIM's Log, Exp, Atn, Sin, Cos and ^
+_sqrt = vbmath.sqrt
+_log = vbmath.log
+_exp = vbmath.exp
+_cos = vbmath.cos
+_sin = vbmath.sin
+_atan = vbmath.atn
+_pow = vbmath.pow
 
 
 F16 = f32(1.0 / 6.0)
@@ -136,7 +139,7 @@ class TrimEngine(object):
         if k < 1:
             k = 1
         eg = self.grid_eg
-        a = eg ** (k - 1)
+        a = _pow(eg, k - 1)
         b = eg * a
         tab = self.t.stop[p][layer]
         s0 = tab[k - 1]
@@ -147,7 +150,7 @@ class TrimEngine(object):
         bohr = t.bohr[layer]
         if w > bohr:
             m1000 = t.mass1000[p]          # Single for the ion (VB Single*Integer)
-            q = 1 - 1 / (1 + e / (m1000 * 931494)) ** 2
+            q = 1 - 1 / _pow(1 + e / (m1000 * 931494), 2)
             w = bohr * ((1 / q - 0.5) / (1 / q - 1))
         r = self.rnd('45df02')
         strag = ((r - 0.5) * w) * _sqrt(length)
@@ -173,7 +176,7 @@ class TrimEngine(object):
         self.fl_l0 = l0
         eps = t.eps_fac[lay] * st.e
         eeg = _sqrt(t.emin_fac[lay] * eps)
-        pmax = t.a_ion[lay] / ((eeg + _sqrt(eeg)) + 0.125 * eeg ** 0.1)
+        pmax = t.a_ion[lay] / ((eeg + _sqrt(eeg)) + 0.125 * _pow(eeg, 0.1))
         length = 1 / (((PI * pmax) * pmax) * n)
         xnext = st.x + length * st.cx
         self.fl_xnext = xnext
@@ -269,7 +272,7 @@ class TrimEngine(object):
         eps = e * t.pair_eps[p][i]
         b = pimp / t.pair_a[p][i]
         if eps > 10:
-            s2 = 1 / (1 + (1 + b * (1 + b)) * ((2 * eps) * b) ** 2)
+            s2 = 1 / (1 + (1 + b * (1 + b)) * _pow((2 * eps) * b, 2))
             cost = 2 * (1 - s2) - 1
         else:
             r = b
@@ -302,11 +305,11 @@ class TrimEngine(object):
             roc = (-2 * (eps - v)) / v1
             sqe = _sqrt(eps)
             cc = (0.011615 + sqe) / (0.0071222 + sqe)
-            aa = ((2 * eps) * (1 + 0.99229 / sqe)) * b ** cc
-            ff = (_sqrt(1 + aa ** 2) - aa) * ((9.3066 + eps) / (14.813 + eps))
+            aa = ((2 * eps) * (1 + 0.99229 / sqe)) * _pow(b, cc)
+            ff = (_sqrt(1 + _pow(aa, 2)) - aa) * ((9.3066 + eps) / (14.813 + eps))
             delta = (ff * ((r - b) * aa)) / (1 + ff)
             c = ((b + delta) + roc) / (r + roc)
-            c2 = c ** 2
+            c2 = _pow(c, 2)
             s2 = 1 - c2
             cost = 2 * c2 - 1
         if cost > 1:
@@ -348,7 +351,7 @@ class TrimEngine(object):
             else:
                 t2 = cpsi * cy - q * (((cy * cx) * cphi) - cz * sphi)
                 t3 = cpsi * cz - q * (((cz * cx) * cphi) + cy * sphi)
-        nrm = _sqrt((t1 ** 2 + t2 ** 2) + t3 ** 2)
+        nrm = _sqrt((_pow(t1, 2) + _pow(t2, 2)) + _pow(t3, 2))
         c1 = t1 / nrm
         return c1, t2 / nrm, t3 / nrm, _sqrt(abs(1 - c1 * c1))
 
@@ -370,9 +373,9 @@ class TrimEngine(object):
             tal.g_a10 = tal.g2c0 / n
             tal.g_9f8 = tal.g2d0 / n
             if n > 1:
-                tal.g_a48 = _sqrt(abs(tal.g288 / n - tal.g_a38 ** 2))
+                tal.g_a48 = _sqrt(abs(tal.g288 / n - _pow(tal.g_a38, 2)))
                 tal.g_a20 = _sqrt(abs(tal.g2c8 / n))
-                tal.g_a08 = _sqrt(abs(tal.g2d8 / n - tal.g_9f8 ** 2))
+                tal.g_a08 = _sqrt(abs(tal.g2d8 / n - _pow(tal.g_9f8, 2)))
 
     def _run_ion(self):
         t = self.t
@@ -499,7 +502,7 @@ class TrimEngine(object):
                     state = 'NEXT'
                     continue
                 if rx[k] < 0:
-                    eperp = (rcx[k] ** 2) * re[k]
+                    eperp = _pow(rcx[k], 2) * re[k]
                     self.on_recoil_surface(k, rt, eperp)
                     if eperp < t.surface[rt]:
                         rcx[k] = -rcx[k]
@@ -713,7 +716,7 @@ class TrimEngine(object):
         lay = st.layer
         b = int(self.bin_of(st.x))
         eps = t.c724[lay] * tt
-        nu = tt / (1 + t.c728[lay] * ((eps + 0.4 * eps ** 0.75) + 3.4 * eps ** F16))
+        nu = tt / (1 + t.c728[lay] * ((eps + 0.4 * _pow(eps, 0.75)) + 3.4 * _pow(eps, F16)))
         w = (tt - nu) * inv
         tal.d964.add(w, 2, b)
         lat = self.lat_bin(st.y)
@@ -889,15 +892,15 @@ class TrimEngine(object):
             self.out.range3d(self.ion_number, st)
         x, y, z = st.x, st.y, st.z
         tal.g280 = tal.g280 + x
-        tal.g288 = tal.g288 + x ** 2
-        tal.g290 = tal.g290 + x ** 3
-        tal.g298 = tal.g298 + x ** 4
+        tal.g288 = tal.g288 + _pow(x, 2)
+        tal.g290 = tal.g290 + _pow(x, 3)
+        tal.g298 = tal.g298 + _pow(x, 4)
         ay = abs(y)
         tal.g2c0 = tal.g2c0 + ay
-        tal.g2c8 = tal.g2c8 + ay ** 2
+        tal.g2c8 = tal.g2c8 + _pow(ay, 2)
         r = _sqrt(y * y + z * z)
         tal.g2d0 = r + tal.g2d0
-        tal.g2d8 = r ** 2.0 + tal.g2d8
+        tal.g2d8 = _pow(r, 2) + tal.g2d8
         if x > self.xmin and x < self.xmax:
             inv = self.invbinw
             b = int(self.bin_of(x))
@@ -907,8 +910,8 @@ class TrimEngine(object):
             tal.d980.add(w, b, lat)
             tal.d98c.add(inv, 1, b)
             tal.d9b0.add(ay, 1, b)
-            tal.d9b0.add(ay ** 2, 2, b)
+            tal.d9b0.add(_pow(ay, 2), 2, b)
             tal.d9ac.add(r, 1, b)
-            tal.d9ac.set(r ** 2.0 + tal.d9ac.get(2, b), 2, b)
+            tal.d9ac.set(_pow(r, 2) + tal.d9ac.get(2, b), 2, b)
             lat = self.lat_bin(y)
             tal.d974.add(inv, b, lat)
