@@ -25,19 +25,19 @@ def _trim(s):
     return s
 
 
-def vb_cstr(x):
-    """CStr() of a Double/Single/Integer"""
+def vb_cstr(x, single=False):
+    """CStr() of a Double/Single/Integer (single: x is a VB Single, 7 digits)"""
     if isinstance(x, bool):
         return 'True' if x else 'False'
     if isinstance(x, int):
         return str(x)
     if x == 0:
         return '0'
-    d = _digits15(x)
+    d = Decimal('%.6e' % x) if single else _digits15(x)
     sign = '-' if d < 0 else ''
     d = abs(d)
     exp = d.adjusted()
-    if exp >= 15 or exp < -4:
+    if exp >= (7 if single else 15) or exp < -4:
         m = d.scaleb(-exp)
         ms = _trim(format(m, 'f'))
         return '%s%sE%s%02d' % (sign, ms, '+' if exp >= 0 else '-', abs(exp))
@@ -47,9 +47,9 @@ def vb_cstr(x):
     return sign + s
 
 
-def vb_str(x):
+def vb_str(x, single=False):
     """Str$(): like CStr with a leading blank for positive numbers"""
-    s = vb_cstr(x)
+    s = vb_cstr(x, single)
     if not s.startswith('-'):
         s = ' ' + s
     return s

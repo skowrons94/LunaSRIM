@@ -86,3 +86,5 @@ class TrimTally(object):
         self.g2c0 = self.g2c8 = self.g2d0 = self.g2d8 = 0.0   # lateral moments
         self.n_back = 0
         self.n_trans = 0
+        # running statistics (0x45a200)
+        self.g_a38 = self.g_a48 = self.g_a10 = self.g_a20 = self.g_9f8 = self.g_a08 = 0

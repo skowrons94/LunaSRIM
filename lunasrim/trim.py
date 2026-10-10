@@ -76,6 +76,11 @@ class TrimEngine(object):
         self.tal = TrimTally(t.nel, t.nlay, log)
         self.out = None              # TrimOutput writing the SRIM Outputs files
         self.invbinw = 1 / self.binw
+        # average lattice binding energy (G4fd93c)
+        acc = 0
+        for i in range(1, t.nel + 1):
+            acc = acc + ti.lattice[i - 1] / t.nel
+        self.avg_lattice = acc
 
     STACK = 200000
 
@@ -339,6 +344,25 @@ class TrimEngine(object):
 
     # --------------------------------------------------------------- ion loop
     def run_ion(self):
+        st = self._run_ion()
+        self.last_e = st.e
+        self.ion_stats()
+        return st
+
+    def ion_stats(self):
+        """0x45a200: running averages shown by TRIM (range, lateral, radial)"""
+        tal = self.tal
+        n = (self.ion_number - tal.n_back) - tal.n_trans
+        if n > 0:
+            tal.g_a38 = tal.g280 / n
+            tal.g_a10 = tal.g2c0 / n
+            tal.g_9f8 = tal.g2d0 / n
+            if n > 1:
+                tal.g_a48 = _sqrt(abs(tal.g288 / n - tal.g_a38 ** 2))
+                tal.g_a20 = _sqrt(abs(tal.g2c8 / n))
+                tal.g_a08 = _sqrt(abs(tal.g2d8 / n - tal.g_9f8 ** 2))
+
+    def _run_ion(self):
         t = self.t
         self.ion_number += 1
         log = self.log
