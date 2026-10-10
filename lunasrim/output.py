@@ -306,14 +306,7 @@ class TrimDistributions(object):
         self.dens_line = []
         self.elem_lines = []
         for j, l in enumerate(ti.layers):
-            n = t.N[j]
-            if n >= 0.01:
-                dl = vb_str(n * 100)[:6] + 'E22 atoms/cm3'
-            else:
-                dl = vb_str(n / 10)[:6] + 'E19 atoms/cm3'
-            line = '  Layer #' + vb_str(j + 1) + '- Density =' + dl
-            line = line + ' =' + vb_str(l.density, True)[:6] + ' g/cm3'
-            self.dens_line.append(line)
+            self.dens_line.append(self._dens_line(j))
             el = []
             for i in range(1, nel + 1):
                 fr = t.frac[j][i]
@@ -329,6 +322,17 @@ class TrimDistributions(object):
         self.files = {}
 
     # -------------------------------------------------------------- helpers
+    def _dens_line(self, j, nchar=6):
+        """'  Layer # 1- Density = 4.976E22 atoms/cm3 = 2.321 g/cm3' (TDATA
+        keeps 11 characters of the mass density when it is below 0.001)"""
+        n = self.t.N[j]
+        if n >= 0.01:
+            dl = vb_str(n * 100)[:6] + 'E22 atoms/cm3'
+        else:
+            dl = vb_str(n / 10)[:6] + 'E19 atoms/cm3'
+        line = '  Layer #' + vb_str(j + 1) + '- Density =' + dl
+        return line + ' =' + vb_str(self.ti.layers[j].density, True)[:nchar] + ' g/cm3'
+
     def _open(self, name):
         f = open(os.path.join(self.dir, name), 'w', encoding='latin-1', newline='')
         lines = []
@@ -477,11 +481,12 @@ class TrimDistributions(object):
                     out.append(s)
         out.append(EQ68)
 
-    def _totals(self, out):
+    def _totals(self, out, note=()):
         tal = self.tal
         inv = self.eng.invbinw
         vac = int(round((tal.g244 / inv) / self.ions))
         out.append(' Total Target Vacancies     =' + vb_str(vac) + ' ' + '/Ion')
+        out.extend(note)
         if self.kp != 1:
             disp = int(round(((tal.g244 + tal.g1d8) / inv) / self.ions))
             out.append(' Total Target Displacements =' + vb_str(disp) + ' ' + '/Ion')
@@ -531,14 +536,15 @@ class TrimDistributions(object):
                    ' See file :  SRIM Outputs\\TDATA.txt for calculation data')
         self._target_block2(out, True, '0.E+00', True)
         out.append(' Total Ions calculated =' + vb_format(self.ions, '0.00'))
-        self._totals(out)
+        note = []
         if self.kp == 2:
-            out.append('=' * 73)
-            out.append('  NOTE: Vacancies not accurately calculated in SPUTTERING calculation.   ')
-            out.append('  Atoms move if Energy > E(surface) instead of Energy > E(displacement)  ')
-            out.append('  Quick Fix for near-surface vacancies: Make E(surface)= E(displacement),')
-            out.append('      and use Monolayer Steps (TRIM Damage Setup). Not perfect, but OK.  ')
-            out.append('=' * 73)
+            note = ['=' * 73,
+                    '  NOTE: Vacancies not accurately calculated in SPUTTERING calculation.   ',
+                    '  Atoms move if Energy > E(surface) instead of Energy > E(displacement)  ',
+                    '  Quick Fix for near-surface vacancies: Make E(surface)= E(displacement),',
+                    '      and use Monolayer Steps (TRIM Damage Setup). Not perfect, but OK.  ',
+                    '=' * 73]
+        self._totals(out, note)
         out.append('')
         if self.kp == 0:
             out.append('!!!! NOTE : 2nd Column below is number of Primary Knock-Ons !!!!')
@@ -624,6 +630,11 @@ class TrimDistributions(object):
                 h[2] += 'by  ' + symbol2(t.z[i]) + '       '
                 h[3] += '-----------  '
         w2 = 13
+        if self.kp == 2:
+            # TRIM leaves the column format and field of the previously
+            # written files (RANGE: '  0.0000E+00', LATERAL: 14 characters)
+            fmt = '  0.0000E+00'
+            w2 = 14
         if self.kp == 1:
             h[0] += ' ENERGY    '
             h[1] += ' Absorbed  '
@@ -737,7 +748,7 @@ class TrimDistributions(object):
         for j, l in enumerate(ti.layers):
             out.append('  Layer #' + vb_print_num(j + 1) + '- ' + l.name)
             out.append('  Layer #' + vb_print_num(j + 1) + '- Bottom Depth=' + r11(t.depth[j], '0.E+00') + ' A')
-            out.append(self.dens_line[j])
+            out.append(self._dens_line(j, 11 if f32(0.001) > l.density else 6))
             for s in self.elem_lines[j]:
                 if s:
                     out.append(s)
@@ -771,11 +782,12 @@ class TrimDistributions(object):
         self._save(f, out)
 
     def write_all(self):
+        """all distribution files, in TRIM's order (0x46be80)"""
         self.write_range()
-        self.write_tdata()
+        self.write_lateral()
         self.write_ioniz()
         self.write_phonon()
         self.write_e2recoil()
         self.write_vacancy()
         self.write_novac()
-        self.write_lateral()
+        self.write_tdata()

@@ -122,3 +122,43 @@ def symbol_to_z(symbol, directory=DATA_DIR):
         if e.symbol.lower() == s:
             return z
     raise KeyError(symbol)
+
+
+class AtomData(object):
+    """One row of SRIM's ATOMDATA file (default masses and energies the TRIM
+    user interface proposes for an element)"""
+
+    def __init__(self, line):
+        t = line.split()
+        self.z = int(t[0])
+        self.symbol = t[1]
+        self.name = t[2]
+        v = [float(x) for x in t[3:11]]
+        self.mai_mass_int = int(v[0])
+        self.mai_weight = v[1]            # mass of the most abundant isotope
+        self.natural_weight = v[2]        # isotope averaged atomic weight
+        self.density = v[3]
+        self.atomic_density = v[4]
+        self.fermi_velocity = v[5]
+        self.heat_sublimation = v[6]      # default surface binding energy
+
+
+_ATOMDATA = {}
+
+
+def load_atomdata(directory=DATA_DIR):
+    if directory in _ATOMDATA:
+        return _ATOMDATA[directory]
+    table = {}
+    with open(_find('ATOMDATA', directory), encoding='latin-1') as fh:
+        for line in fh:
+            t = line.split()
+            if len(t) >= 11 and t[0].isdigit():
+                a = AtomData(line)
+                table[a.z] = a
+    _ATOMDATA[directory] = table
+    return table
+
+
+def atomdata(z, directory=DATA_DIR):
+    return load_atomdata(directory)[int(z)]

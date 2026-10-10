@@ -190,16 +190,18 @@ def _mantissa(m, ip, fp, has_point):
 
 
 def vb_format(x, fmt, single=False):
-    """Format$(x, fmt) for numeric formats.  Unlike Str$/CStr, Format$
-    works on the exact binary value of a Single (131.904! gives 131.90401
-    with '###.#####'), so ``single`` makes no difference here."""
+    """Format$(x, fmt) for numeric formats.  Format$ rounds the value
+    converted with 17 significant digits (Str$/CStr use 15), also for a
+    Single (131.904! gives 131.90401 with '###.#####'), so ``single``
+    makes no difference here."""
     secs = _split_sections(fmt)
     if isinstance(x, Decimal):
         d = x
     elif isinstance(x, int) and not isinstance(x, bool):
         d = Decimal(x)
     else:
-        d = _digits15(float(x))
+        # Format$ converts with 17 significant digits (Str$/CStr use 15)
+        d = Decimal('%.16e' % float(x))
     neg = d < 0
     if neg and len(secs) > 1 and secs[1] != '':
         sec = secs[1]
