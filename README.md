@@ -17,6 +17,13 @@ The stopping and range tables are identical to those of `SRModule.exe`.
 No Windows, wine or docker is needed to run calculations; the package is
 pure Python (numpy is optional and only used by the result readers).
 
+A **web application** runs on top of the package: stopping and range
+tables, implantation profiles, TRIM Monte Carlo with trajectories and
+damage plots, and comparisons of stopping curves. See
+[Web application](#web-application).
+
+![TRIM trajectories in the web application](docs/img/trim_trajectories.png)
+
 ## Installation
 
 ```sh
@@ -113,6 +120,58 @@ lunasrim:
 ```sh
 ./run.sh scripts/F_in_Fe.py        # results in output/F_in_Fe/
 ```
+
+## Web application
+
+```sh
+pip install ".[web]"                 # fastapi + uvicorn
+tools/fetch_web_vendor.sh            # optional: local copy of plotly.js for offline use
+python -m lunasrim.web               # http://127.0.0.1:8000/
+```
+
+Or run it with Docker: `docker build -t lunasrim . && docker run -p 8000:8000 lunasrim`.
+
+The web application has four tools.
+
+**Stopping & Range.** This is the SRIM "Stopping and Range Tables":
+- pick the ion from a periodic table, and an element, a chemical formula or
+  one of SRIM's 356 compounds (with densities) as target;
+- plot electronic and nuclear stopping, projected range and straggling in any
+  of SRIM's 8 stopping units;
+- view the table and download it as CSV or as the SRModule.exe output file.
+
+**Implantation.** For one or more implant energies and doses it gives:
+- the projected range, longitudinal and lateral straggling, and the Gaussian
+  depth profiles with their sum;
+- peak concentration and atomic fraction;
+- R<sub>p</sub> ± ΔR<sub>p</sub> versus energy;
+- a box-profile helper that chooses energies and doses for a flat
+  concentration between two depths.
+
+**TRIM Monte Carlo.** You define multi-layer targets (elements or compounds,
+gas or solid, with displacement, lattice and surface energies) and the
+calculation type, then follow the run live. The results are:
+- ion trajectories with recoil cascades, in three projections;
+- the ion and recoil range distributions with a Gaussian fit;
+- vacancies per element, replacement collisions, ionization, phonons and
+  energy given to recoils;
+- lateral spread and final ion positions;
+- energy and angle spectra of transmitted, backscattered and sputtered atoms;
+- all of TRIM's output files, also as a zip.
+
+A depth window (SRIM's plot window) sets the histogram resolution.
+
+**Compare.** Overlay stopping, range or straggling curves of different
+ion/target pairs, versus energy or energy per nucleon.
+
+The server limits the number of ions per TRIM calculation
+(`LUNASRIM_MAX_IONS`, default 100000) and the number of calculations that run
+at once (`LUNASRIM_MAX_JOBS`, default 2).
+
+| | |
+|---|---|
+| ![Stopping](docs/img/stopping.png) | ![Implantation](docs/img/implantation.png) |
+| ![Damage](docs/img/trim_damage.png) | ![Compare](docs/img/compare_dark.png) |
 
 ## Validation
 
@@ -214,7 +273,9 @@ for exact agreement:
   - `rng.py`: random numbers.
   - `vbfmt.py`: VB number formatting.
   - `tally.py`: distributions.
-  - `data/`: SRIM-2013 data files (`SCOEF03.DAT`, `SNUC03.dat`, `ATOMDATA`; (c) J. F. Ziegler).
+  - `compounds.py`: SRIM's compound dictionary.
+  - `web/`: the web application (FastAPI server and browser front end).
+  - `data/`: SRIM-2013 data files (`SCOEF03.DAT`, `SNUC03.dat`, `ATOMDATA`, `Compound.dat`; (c) J. F. Ziegler).
 - `scripts/`: example calculations.
 - `tests/`: regression tests against TRIM.exe and SRModule.exe.
 - `tools/`: helpers to extract and run the original SRIM through docker and to validate lunasrim against it.

@@ -76,6 +76,11 @@ class TrimEngine(object):
         self.ncx = self.ncy = self.ncz = self.nsine = 0.0
         self.tal = TrimTally(t.nel, t.nlay, log)
         self.out = None              # TrimOutput writing the SRIM Outputs files
+        # optional recording of trajectories (does not change the calculation):
+        # path = [(x, y, z), ...] of the last ion, recoil_segments = [(x0, y0, z0, x1, y1, z1)]
+        self.record_path = False
+        self.path = None
+        self.recoil_segments = None
         self.invbinw = t.inv_binwidth
         # average lattice binding energy (G4fd93c)
         acc = 0
@@ -383,6 +388,9 @@ class TrimEngine(object):
         self.cnt518 = 0
         st.y = ((t.L0[0] * st.cy) * self.rnd('4344a7'))
         st.z = ((t.L0[0] * st.cz) * self.rnd('434541'))
+        path = [(st.x, st.y, st.z)] if self.record_path else None
+        self.path = path
+        self.recoil_segments = [] if self.record_path else None
         e0 = self.e0
         ef = self.ef
         while True:
@@ -401,6 +409,8 @@ class TrimEngine(object):
             st.x = st.x + length * st.cx
             st.y = st.y + length * st.cy
             st.z = st.z + length * st.cz
+            if path is not None:
+                path.append((st.x, st.y, st.z))
             st.layer = self.find_layer(st.x)
             if st.x < 0:
                 self.fate = 'B'
@@ -473,9 +483,13 @@ class TrimEngine(object):
                 rt = rtyp[k]
                 rl = rlay_[k]
                 lr = l0[rl]
+                if self.recoil_segments is not None:
+                    p0 = (rx[k], ry[k], rz[k])
                 rx[k] = f32(rx[k] + lr * rcx[k])
                 ry[k] = f32(ry[k] + lr * rcy[k])
                 rz[k] = f32(rz[k] + lr * rcz[k])
+                if self.recoil_segments is not None and len(self.recoil_segments) < 20000:
+                    self.recoil_segments.append(p0 + (rx[k], ry[k], rz[k]))
                 if rx[k] > depth_end:
                     self.on_recoil_transmitted(k)
                     state = 'NEXT'

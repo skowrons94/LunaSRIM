@@ -192,8 +192,13 @@ def _scoef_raw(directory=data_files.DATA_DIR):
 class StoppingTable(object):
     """Stopping and range table of SRModule.exe"""
 
-    def __init__(self, si):
+    def __init__(self, si, strict=True):
         self.si = si
+        # strict: fail where SRModule.exe fails.  Otherwise the integration
+        # stops when the accumulated energy is within rounding of E-Max (on
+        # SRIM's grid E-Max can be missed by 1e-12 and SRModule.exe then
+        # integrates backwards and stops with a run-time error).
+        self.strict = strict
         self.rows = []          # (E keV, Se, Sn, range A, long. straggling A, lat. straggling A)
         self._setup()
 
@@ -368,6 +373,11 @@ class StoppingTable(object):
             if emax_ev < hi:
                 hi = emax_ev * 1
             de = (hi - lo) / nsub
+            if not (de > 0):
+                if self.strict:
+                    raise SrError('the energy integration does not reach E-Max exactly (accumulated '
+                                  'rounding); SRModule.exe stops here with a run-time error')
+                break
             for j in range(nsub):
                 en = en + de
                 sv, st = nuclear(en, 0.19594)
@@ -583,7 +593,7 @@ def stopping_table(ion_z, ion_mass, elements, density, emin, emax, phase=0, corr
     si.ion_z, si.ion_mass, si.density, si.phase, si.correction = ion_z, ion_mass, density, phase, correction
     si.elements = [SrElement(z, '', st, m) for (z, st, m) in elements]
     si.units, si.emin, si.emax = units, emin, emax
-    t = StoppingTable(si)
+    t = StoppingTable(si, strict=False)
     t.calculate()
     u = t.unit_factor[units] / t.conv
     return [(e, u * se, u * sn, rp, lon, lat) for (e, se, sn, rp, lon, lat) in t.rows]

@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LunaSRIM</title>
+<meta name="description" content="Stopping and range of ions in matter: SRIM-2013 re-implemented in Python, in the browser.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%23243b6b'/%3E%3Cpath d='M8 30 C20 28 26 34 34 30 S48 22 56 26' stroke='%23ffb84d' stroke-width='4' fill='none'/%3E%3Ccircle cx='56' cy='26' r='4' fill='%23ffb84d'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <svg viewBox="0 0 64 64" class="logo" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="var(--brand)"/><path d="M8 30 C20 28 26 34 34 30 S48 22 56 26" stroke="var(--accent)" stroke-width="4" fill="none"/><circle cx="56" cy="26" r="4" fill="var(--accent)"/></svg>
+    <div>
+      <div class="brand-name">LunaSRIM</div>
+      <div class="brand-sub">Stopping and Range of Ions in Matter</div>
+    </div>
+  </div>
+  <nav class="tabs" role="tablist">
+    <button class="tab active" data-view="stopping">Stopping &amp; Range</button>
+    <button class="tab" data-view="implant">Implantation</button>
+    <button class="tab" data-view="trim">TRIM Monte Carlo</button>
+    <button class="tab" data-view="compare">Compare</button>
+    <button class="tab" data-view="about">About</button>
+  </nav>
+  <button id="themeToggle" class="icon-btn" title="Light / dark theme" aria-label="Toggle theme"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
+</header>
+
+<main>
+<!-- ================================================================ STOPPING -->
+<section class="view active" id="view-stopping">
+  <aside class="panel form-panel">
+    <h2>Ion</h2>
+    <div class="ion-picker" data-ion="sr"></div>
+    <h2>Target</h2>
+    <div class="target-editor" data-target="sr"></div>
+    <h2>Energy range</h2>
+    <div class="grid2">
+      <label>Minimum <span class="unit-input"><input type="number" id="sr-emin" value="10" min="0" step="any"><select id="sr-emin-u"><option>eV</option><option selected>keV</option><option>MeV</option><option>GeV</option></select></span></label>
+      <label>Maximum <span class="unit-input"><input type="number" id="sr-emax" value="10" min="0" step="any"><select id="sr-emax-u"><option>eV</option><option>keV</option><option selected>MeV</option><option>GeV</option></select></span></label>
+    </div>
+    <label>Stopping units
+      <select id="sr-units">
+        <option value="1">eV / Angstrom</option><option value="2">keV / micron</option><option value="3">MeV / mm</option>
+        <option value="4">keV / (ug/cm2)</option><option value="5" selected>MeV / (mg/cm2)</option><option value="6">keV / (mg/cm2)</option>
+        <option value="7">eV / (1E15 atoms/cm2)</option><option value="8">L.S.S. reduced units</option>
+      </select>
+    </label>
+    <button class="primary wide" id="sr-run">Calculate table</button>
+    <p class="hint">Same algorithm and output as SRIM-2013's SR Module (SRModule.exe), digit for digit.</p>
+  </aside>
+  <div class="panel results-panel">
+    <div class="subtabs" data-group="sr">
+      <button class="subtab active" data-pane="sr-plot-stop">Stopping power</button>
+      <button class="subtab" data-pane="sr-plot-range">Range &amp; straggling</button>
+      <button class="subtab" data-pane="sr-table">Table</button>
+      <button class="subtab" data-pane="sr-text">SRIM output file</button>
+    </div>
+    <div class="empty" id="sr-empty">Choose an ion and a target, then <b>Calculate table</b>.</div>
+    <div class="pane active" id="sr-plot-stop"><div class="plot" id="plot-sr-stop"></div></div>
+    <div class="pane" id="sr-plot-range"><div class="plot" id="plot-sr-range"></div></div>
+    <div class="pane" id="sr-table"><div class="toolbar"><button id="sr-csv">Download CSV</button></div><div class="table-wrap"><table class="data" id="sr-tab"></table></div></div>
+    <div class="pane" id="sr-text"><div class="toolbar"><button id="sr-dl">Download SRIM file</button></div><pre id="sr-pre" class="srfile"></pre></div>
+  </div>
+</section>
+
+<!-- ================================================================ IMPLANT -->
+<section class="view" id="view-implant">
+  <aside class="panel form-panel">
+    <h2>Ion</h2>
+    <div class="ion-picker" data-ion="im"></div>
+    <h2>Target</h2>
+    <div class="target-editor" data-target="im"></div>
+    <h2>Implant energies and doses</h2>
+    <table class="mini" id="im-energies">
+      <thead><tr><th>Energy (keV)</th><th>Dose (ions/cm²)</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <div class="row-btns"><button id="im-add">+ Energy</button><button id="im-box" title="Fill a flat (box) profile with several energies">Box profile…</button></div>
+    <button class="primary wide" id="im-run">Calculate profile</button>
+    <p class="hint">Projected range R<sub>p</sub>, longitudinal straggling ΔR<sub>p</sub> and lateral straggling from the SR module; profiles are Gaussian. For damage, sputtering, multilayer targets and the exact (non-Gaussian) profile run a <a href="#" data-goto="trim">TRIM calculation</a>.</p>
+  </aside>
+  <div class="panel results-panel">
+    <div class="subtabs" data-group="im">
+      <button class="subtab active" data-pane="im-profile">Depth profile</button>
+      <button class="subtab" data-pane="im-curve">R<sub>p</sub> / ΔR<sub>p</sub> vs energy</button>
+      <button class="subtab" data-pane="im-results">Results</button>
+    </div>
+    <div class="empty" id="im-empty">Add one or more implant energies and press <b>Calculate profile</b>.</div>
+    <div class="pane active" id="im-profile">
+      <div class="toolbar">
+        <label class="inline"><input type="checkbox" id="im-log" checked> log concentration</label>
+        <label class="inline">depth <select id="im-depthu"><option value="auto">auto</option><option value="A">Å</option><option value="nm">nm</option><option value="um">µm</option></select></label>
+      </div>
+      <div class="plot" id="plot-im-profile"></div>
+    </div>
+    <div class="pane" id="im-curve"><div class="plot" id="plot-im-curve"></div></div>
+    <div class="pane" id="im-results"><div class="cards" id="im-cards"></div><div class="table-wrap"><table class="data" id="im-tab"></table></div></div>
+  </div>
+</section>
+
+<!-- ================================================================ TRIM -->
+<section class="view" id="view-trim">
+  <aside class="panel form-panel">
+    <h2>Ion</h2>
+    <div class="ion-picker" data-ion="tr" data-angle="1"></div>
+    <h2>Target layers <span class="h-note">(the ion enters layer 1)</span></h2>
+    <div id="tr-layers"></div>
+    <div class="row-btns"><button id="tr-addlayer">+ Layer</button></div>
+    <h2>Calculation</h2>
+    <label>Damage
+      <select id="tr-calc">
+        <option value="1" selected>Ion distribution and quick damage (Kinchin-Pease)</option>
+        <option value="2">Detailed calculation with full damage cascades</option>
+        <option value="3">Surface sputtering / monolayer collision steps</option>
+      </select>
+    </label>
+    <div class="grid3">
+      <label>Number of ions <input type="number" id="tr-n" value="1000" min="1" step="1"></label>
+      <label>Random seed <input type="number" id="tr-seed" placeholder="auto" step="1"></label>
+      <label>Trajectories shown <input type="number" id="tr-traj" value="100" min="0" max="500" step="1"></label>
+    </div>
+    <div class="grid2">
+      <label title="Depth window of the 100 histogram bins (SRIM's plot window); empty = whole target">Histograms from (nm) <input type="number" id="tr-xmin" placeholder="0" min="0" step="any"></label>
+      <label title="Depth window of the 100 histogram bins (SRIM's plot window); empty = whole target">to (nm) <input type="number" id="tr-xmax" placeholder="whole target" min="0" step="any"></label>
+    </div>
+    <button class="primary wide" id="tr-run">Run TRIM</button>
+    <p class="hint">Runs the TRIM-2013 Monte Carlo algorithm (same random numbers and results as TRIM.exe). Full damage cascades are slower; start with a few hundred ions.</p>
+  </aside>
+  <div class="panel results-panel">
+    <div class="progress hidden" id="tr-progress"><div class="ptext"></div><button id="tr-stop" class="danger small">Stop</button><div class="bar"><div class="fill"></div></div></div>
+    <div class="subtabs" data-group="tr">
+      <button class="subtab active" data-pane="tr-traj-pane">Trajectories</button>
+      <button class="subtab" data-pane="tr-range-pane">Ion ranges</button>
+      <button class="subtab" data-pane="tr-damage-pane">Damage</button>
+      <button class="subtab" data-pane="tr-energy-pane">Energy loss</button>
+      <button class="subtab" data-pane="tr-lateral-pane">Lateral</button>
+      <button class="subtab" data-pane="tr-out-pane">Transmitted / backscattered</button>
+      <button class="subtab" data-pane="tr-files-pane">Summary &amp; files</button>
+    </div>
+    <div class="empty" id="tr-empty">Define the ion and the target layers, then <b>Run TRIM</b>.</div>
+    <div class="pane active" id="tr-traj-pane">
+      <div class="toolbar">
+        <label class="inline">view <select id="tr-view"><option value="xy">depth – Y</option><option value="xz">depth – Z</option><option value="yz">Y – Z (beam axis)</option></select></label>
+        <label class="inline"><input type="checkbox" id="tr-showrec" checked> recoils</label>
+        <label class="inline"><input type="checkbox" id="tr-showstop" checked> final ion positions</label>
+        <button id="tr-png">Save PNG</button>
+      </div>
+      <div class="canvas-wrap"><canvas id="tr-canvas"></canvas><div class="legend" id="tr-legend"></div></div>
+    </div>
+    <div class="pane" id="tr-range-pane"><div class="cards" id="tr-range-cards"></div><div class="plot" id="plot-tr-range"></div><div class="plot" id="plot-tr-recoil"></div></div>
+    <div class="pane" id="tr-damage-pane"><div class="cards" id="tr-dmg-cards"></div><div class="plot" id="plot-tr-vac"></div><div class="plot" id="plot-tr-novac"></div></div>
+    <div class="pane" id="tr-energy-pane"><div class="plot" id="plot-tr-ioniz"></div><div class="plot" id="plot-tr-phon"></div><div class="plot" id="plot-tr-e2r"></div></div>
+    <div class="pane" id="tr-lateral-pane"><div class="plot" id="plot-tr-lat"></div><div class="plot" id="plot-tr-scatter"></div></div>
+    <div class="pane" id="tr-out-pane"><div class="cards" id="tr-out-cards"></div><div class="plot" id="plot-tr-espec"></div><div class="plot" id="plot-tr-ang"></div></div>
+    <div class="pane" id="tr-files-pane"><div class="cards" id="tr-sum-cards"></div><div class="toolbar"><a class="btn" id="tr-zip" href="#" download>Download all files (.zip)</a></div><ul class="files" id="tr-files"></ul><pre id="tr-filepre" class="srfile"></pre></div>
+  </div>
+</section>
+
+<!-- ================================================================ COMPARE -->
+<section class="view" id="view-compare">
+  <aside class="panel form-panel">
+    <h2>Add a curve</h2>
+    <div class="ion-picker" data-ion="cmp"></div>
+    <div class="target-editor" data-target="cmp"></div>
+    <div class="grid2">
+      <label>E min (keV) <input type="number" id="cmp-emin" value="1" min="0" step="any"></label>
+      <label>E max (keV) <input type="number" id="cmp-emax" value="100000" min="0" step="any"></label>
+    </div>
+    <button class="primary wide" id="cmp-add">Add to comparison</button>
+    <h2>Curves</h2>
+    <ul class="curves" id="cmp-list"></ul>
+    <label>Quantity
+      <select id="cmp-q">
+        <option value="total">Total stopping (MeV cm²/mg)</option><option value="se">Electronic stopping</option>
+        <option value="sn">Nuclear stopping</option><option value="range">Projected range</option>
+        <option value="long">Longitudinal straggling</option><option value="lat">Lateral straggling</option>
+        <option value="rel">Straggling / range</option>
+      </select>
+    </label>
+    <label class="inline"><input type="checkbox" id="cmp-peru"> energy per nucleon (keV/u)</label>
+  </aside>
+  <div class="panel results-panel"><div class="empty" id="cmp-empty">Add ions and targets (elements or compounds) to compare their stopping powers, ranges and straggling.</div><div class="plot tall" id="plot-cmp"></div></div>
+</section>
+
+<!-- ================================================================ ABOUT -->
+<section class="view" id="view-about">
+  <div class="panel prose">
+    <h2>About LunaSRIM</h2>
+    <p>LunaSRIM is a Python&nbsp;3 re-implementation of <b>SRIM-2013</b> by J.F. Ziegler, J.P. Biersack and M.D. Ziegler, obtained by reverse engineering <code>TRIM.exe</code> and <code>SRModule.exe</code>. Every calculation on this site runs that Python code:</p>
+    <ul>
+      <li><b>Stopping &amp; Range</b>: the SR module's stopping powers (SRIM-2013 electronic stopping, ZBL nuclear stopping) and its range/straggling integration. The tables are identical to SRModule.exe output.</li>
+      <li><b>TRIM Monte Carlo</b>: the full TRIM-2013 algorithm (MAGIC scattering integral, electronic energy loss with straggling, Kinchin-Pease or full damage cascades, sputtering). Ion by ion it reproduces TRIM.exe, including its output files, which you can download.</li>
+      <li><b>Implantation</b>: implant depth profiles from projected range and straggling, multi-energy (box) implants, and range curves for elements or any of SRIM's 350 compounds.</li>
+    </ul>
+    <p>The Python package can also be used directly:</p>
+    <pre class="code">pip install .            # from the repository
+python -m lunasrim TRIM.IN        # TRIM calculation
+python -m lunasrim SR.IN          # stopping / range table
+python -m lunasrim.web            # this web application</pre>
+    <p>Please cite SRIM when publishing results: J.F. Ziegler, M.D. Ziegler, J.P. Biersack, <i>SRIM – The stopping and range of ions in matter (2010)</i>, Nucl. Instr. Meth. B 268 (2010) 1818.</p>
+    <p class="muted" id="about-version"></p>
+  </div>
+</section>
+</main>
+
+<!-- periodic table dialog -->
+<dialog id="pt-dialog">
+  <div class="pt-head"><h3 id="pt-title">Select an element</h3><input id="pt-search" placeholder="Search name or symbol…"><button class="icon-btn" id="pt-close" aria-label="Close">✕</button></div>
+  <div id="pt-grid" class="pt-grid"></div>
+  <div class="pt-foot muted">SRIM supports elements H (Z=1) to U (Z=92).</div>
+</dialog>
+<div id="toast" class="toast hidden"></div>
+
+<script>
+// Plotly: local copy first (offline use), then CDN
+(function () {
+  var s = document.createElement('script');
+  s.src = 'vendor/plotly.min.js';
+  s.onerror = function () {
+    var c = document.createElement('script');
+    c.src = 'https://cdn.jsdelivr.net/npm/plotly.js-dist-min@2.35.2/plotly.min.js';
+    document.head.appendChild(c);
+  };
+  document.head.appendChild(s);
+})();
+</script>
+<script src="app.js"></script>
+</body>
+</html>

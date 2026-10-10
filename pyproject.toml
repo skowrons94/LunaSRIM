@@ -15,12 +15,14 @@ classifiers = [
 
 [project.optional-dependencies]
 numpy = ["numpy"]
+web = ["fastapi", "uvicorn", "numpy"]
 
 [project.scripts]
 lunasrim = "lunasrim.__main__:main"
 
 [tool.setuptools]
-packages = ["lunasrim"]
+packages = ["lunasrim", "lunasrim.web"]
 
 [tool.setuptools.package-data]
 lunasrim = ["data/*"]
+"lunasrim.web" = ["static/*", "static/vendor/*"]
