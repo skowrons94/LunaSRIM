@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lunasrim"
+version = "0.1.0"
+description = "Python 3 re-implementation of SRIM-2013 (TRIM Monte Carlo and stopping powers)"
+readme = "README.md"
+requires-python = ">=3.6"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering :: Physics",
+]
+
+[project.optional-dependencies]
+numpy = ["numpy"]
+
+[project.scripts]
+lunasrim = "lunasrim.__main__:main"
+
+[tool.setuptools]
+packages = ["lunasrim"]
+
+[tool.setuptools.package-data]
+lunasrim = ["data/*"]

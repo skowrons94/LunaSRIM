@@ -1,0 +1,32 @@
+XeGaAs
+Ion: Z, Mass [amu], Energy [keV], Angle [degrees], Number Ions, Bragg Corr, AutoSave Number
+54 131.904 200 7 200 1.0 0
+Cascades(1=Kitchn-Peese, 2=Full-Cascade, 3=Sputtering, 4-5=Ions;6-7=Neutrons), Random Number Seed, Reminders
+1 99 0
+Diskfiles (0=no,1=yes): RANGES.txt, BACKSCATT.txt, TRANSMIT.txt, Sputtered, COLLISIONS.txt(0=no, 1=Ion, 2=Ion+Recoils), Special EXYZ.txt file
+1 1 1 1 0 0
+Target material : Number of Elements, Number of Layers
+"XeGaAs" 4 2
+PlotType (0-5); Plot Depths: Xmin, Xmax(Ang.) [=0 0 for Viewing Full Target]
+5 0 0
+Target Elements:    Z   Mass [amu]
+Atom 1 = Ga =     31 69.723
+Atom 2 = As =     33 74.922
+Atom 3 = Si =     14 28.086
+Atom 4 = O =     8 15.999
+Layer    Layer Name   Width Density  Ga(31) As(33) Si(14) O(8)
+Number   Description  (Ang) (g/cm^3)Stoich Stoich Stoich Stoich
+1 "GaAs" 1000 5.32 1 1 0 0
+2 "SiO2" 3000 2.2 0 0 1 2
+0  Target layer phases (0=Solid, 1=Gas)
+0 0
+Target Compound Corrections (Bragg)
+ 1.0 1.0
+Individual target atom displacement energies (eV)
+ 25 25 15 28
+Individual target atom lattice binding energies (eV)
+ 3 3 2 3
+Individual target atom surface binding energies (eV)
+ 2.82 1.26 4.7 2
+Stopping Power Version (1=2011, 0=2011)
+0

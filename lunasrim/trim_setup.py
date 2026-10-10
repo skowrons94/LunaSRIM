@@ -87,7 +87,7 @@ class TrimTarget(object):
         for l in ti.layers:
             s = 0.0
             for x in l.stoich:
-                s = s + x
+                s = f32(s + x)              # a VB Single
             self.stoich_sum.append(s)
         for j, l in enumerate(ti.layers):
             self.frac.append([0.0] + [f32(x / self.stoich_sum[j]) for x in l.stoich])

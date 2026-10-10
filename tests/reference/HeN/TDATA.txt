@@ -1,0 +1,41 @@
+====== N =======
+        SRIM-2013.00
+=======================================
+      Data  of  TRIM  Calculation      
+=======================================
+====== TRIM Calc.= He(835. keV) ==> N(  220 mm) ==============================
+------------------------------------------------------------------------------
+--------------------------------------------------------------------
+    Recoil/Damage Calculations made with Kinchin-Pease Estimates    
+--------------------------------------------------------------------
+Ion = He ( 2)   Ion Mass= 004.0030
+Energy  = 8358000.E-04 keV
+Ion Angle to Surface = 0 degrees
+============= TARGET MATERIAL ======================================
+  Layer # 1 - N
+  Layer # 1 - Bottom Depth=     2.E+09 A
+  Layer # 1- Density = 2.902E19 atoms/cm3 = 6.75E-07 g/cm3
+  Layer # 1-  N = 100  Atomic Percent = 100  Mass Percent
+====================================================================
+Target energies for target atom =  N
+    Displacement = 25 eV, Binding = 0 eV, Surface = 3 eV
+====================================================================
+Depth Range of Tabulated Data=  000000.E+00  -  220000.E+04  Angstroms
+====================================================================
+Total Ions calculated =  000019
+Average Range         =   00000.E+00 Angstroms
+Average Straggling    =   00000.E+00 Angstroms
+Average Vacancy/Ion   =   10668.E-04
+====================================================================
+Total Backscattered Ions=  0 
+Total Transmitted Ions  =  20 
+====================================================================
+See files SRIM Outputs\*.txt for tables :
+   TDATA.txt    -- Details of the calculation.
+   RANGE.txt    -- Final distribution of Ions/Recoils
+   VACANCY.txt  -- Distribution of Vacancies
+   IONIZ.txt    -- Distribution of Ionization
+   PHONON.txt   -- Distribution of Phonons
+   E2RECOIL.txt -- Energy transferred to recoils
+   NOVAC.txt    -- Replacement collisions
+   LATERAL.txt  -- Lateral Spread of Ions
