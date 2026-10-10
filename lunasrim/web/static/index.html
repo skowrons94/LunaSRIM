@@ -125,6 +125,12 @@
       <label title="Depth window of the 100 histogram bins (SRIM's plot window); empty = whole target">Histograms from (nm) <input type="number" id="tr-xmin" placeholder="0" min="0" step="any"></label>
       <label title="Depth window of the 100 histogram bins (SRIM's plot window); empty = whole target">to (nm) <input type="number" id="tr-xmax" placeholder="whole target" min="0" step="any"></label>
     </div>
+    <div class="grid2">
+      <label title="EXYZ.txt: the ion energy and position are written each time the ion loses this energy. As in SRIM, this changes the random number sequence.">Energy vs depth every (eV) <input type="number" id="tr-exyz" placeholder="off" min="0" step="any"></label>
+      <label title="COLLISON.txt: the ion collisions which displaced target atoms">Collision file
+        <select id="tr-coll"><option value="0" selected>none</option><option value="1">ion collisions</option><option value="2">ion collisions + cascades</option></select>
+      </label>
+    </div>
     <button class="primary wide" id="tr-run">Run TRIM</button>
     <p class="hint">Runs the TRIM-2013 Monte Carlo algorithm (same random numbers and results as TRIM.exe). Full damage cascades are slower; start with a few hundred ions.</p>
   </aside>
@@ -151,7 +157,7 @@
     </div>
     <div class="pane" id="tr-range-pane"><div class="cards" id="tr-range-cards"></div><div class="plot" id="plot-tr-range"></div><div class="plot" id="plot-tr-recoil"></div></div>
     <div class="pane" id="tr-damage-pane"><div class="cards" id="tr-dmg-cards"></div><div class="plot" id="plot-tr-vac"></div><div class="plot" id="plot-tr-novac"></div></div>
-    <div class="pane" id="tr-energy-pane"><div class="plot" id="plot-tr-ioniz"></div><div class="plot" id="plot-tr-phon"></div><div class="plot" id="plot-tr-e2r"></div></div>
+    <div class="pane" id="tr-energy-pane"><div class="plot" id="plot-tr-exyz"></div><div class="plot" id="plot-tr-ioniz"></div><div class="plot" id="plot-tr-phon"></div><div class="plot" id="plot-tr-e2r"></div></div>
     <div class="pane" id="tr-lateral-pane"><div class="plot" id="plot-tr-lat"></div><div class="plot" id="plot-tr-scatter"></div></div>
     <div class="pane" id="tr-out-pane"><div class="cards" id="tr-out-cards"></div><div class="plot" id="plot-tr-espec"></div><div class="plot" id="plot-tr-ang"></div></div>
     <div class="pane" id="tr-files-pane"><div class="cards" id="tr-sum-cards"></div><div class="toolbar"><a class="btn" id="tr-zip" href="#" download>Download all files (.zip)</a></div><ul class="files" id="tr-files"></ul><pre id="tr-filepre" class="srfile"></pre></div>

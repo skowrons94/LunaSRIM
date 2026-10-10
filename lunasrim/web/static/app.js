@@ -597,6 +597,8 @@ const Trim = {
         trajectories: Math.max(0, Math.min(500, parseInt($('#tr-traj').value) || 0)),
         plot_xmin: (parseFloat($('#tr-xmin').value) || 0) * 10,
         plot_xmax: (parseFloat($('#tr-xmax').value) || 0) * 10,
+        exyz: Math.max(0, parseFloat($('#tr-exyz').value) || 0),
+        collisions: +$('#tr-coll').value,
         title: `${this.ion.label()} ${fmtE(ion.energy)} into ${this.layers.map(l => l.tgt.label()).join('/')}`,
       };
       if (!(ion.energy > 0)) throw new Error('enter the ion energy');
@@ -780,6 +782,10 @@ const Trim = {
     if (r.novac && r.novac.number.length) plot('plot-tr-novac', [{ x: X(r.novac.depth), y: r.novac.number, name: 'Replacement collisions', mode: 'lines', line: { color: PALETTE[4], width: 2 } }], { title: 'Replacement collisions', xaxis: xa, yaxis: { title: 'Number / (Å · ion)' }, shapes });
     else $('#plot-tr-novac').innerHTML = '';
     // energy
+    if (r.exyz && r.exyz.length) {
+      plot('plot-tr-exyz', r.exyz.map((c, i) => ({ x: X(c.x), y: c.e, name: 'ion ' + c.n, mode: 'lines', showlegend: false, line: { color: PALETTE[i % PALETTE.length], width: 1 }, opacity: .8 })),
+        { title: `Ion energy vs depth (EXYZ.txt, ${r.exyz.length} ions)`, xaxis: xa, yaxis: { title: 'Energy (keV)' }, shapes, hovermode: 'closest' });
+    } else $('#plot-tr-exyz').innerHTML = '';
     if (r.ioniz) plot('plot-tr-ioniz', [{ x: X(r.ioniz.depth), y: r.ioniz.ions, name: 'by ions', mode: 'lines', line: { color: PALETTE[0], width: 2 } }, { x: X(r.ioniz.depth), y: r.ioniz.recoils, name: 'by recoils', mode: 'lines', line: { color: PALETTE[1], width: 2 } }], { title: 'Ionization', xaxis: xa, yaxis: { title: 'eV / (Å · ion)' }, shapes });
     if (r.phonons) plot('plot-tr-phon', [{ x: X(r.phonons.depth), y: r.phonons.ions, name: 'by ions', mode: 'lines', line: { color: PALETTE[0], width: 2 } }, { x: X(r.phonons.depth), y: r.phonons.recoils, name: 'by recoils', mode: 'lines', line: { color: PALETTE[1], width: 2 } }], { title: 'Phonons', xaxis: xa, yaxis: { title: 'eV / (Å · ion)' }, shapes });
     if (r.e2recoil) plot('plot-tr-e2r', [{ x: X(r.e2recoil.depth), y: r.e2recoil.ions, name: 'from ions', mode: 'lines', line: { color: PALETTE[0], width: 2 } }].concat(r.e2recoil.absorbed.map((c, i) => ({ x: X(r.e2recoil.depth), y: c, name: r.e2recoil.absorbed.length > 1 ? 'absorbed by ' + elems[i] : 'absorbed by recoils', mode: 'lines', line: { color: PALETTE[(i + 1) % PALETTE.length], width: 2 } }))), { title: 'Energy transferred to recoils', xaxis: xa, yaxis: { title: 'eV / (Å · ion)' }, shapes });

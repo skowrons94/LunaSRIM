@@ -67,6 +67,23 @@ class TestWeb(unittest.TestCase):
         z = self.c.get('/api/trim/%s/files.zip' % jid)
         self.assertEqual(z.status_code, 200)
 
+    def test_trim_exyz_collisions(self):
+        q = {'ion': {'z': 2, 'energy': 500}, 'number_ions': 4, 'calculation': 2, 'seed': 3, 'trajectories': 0,
+             'exyz': 1000, 'collisions': 2,
+             'layers': [{'name': 'Si', 'elements': [{'z': 14}], 'density': 2.321, 'width': 20000}]}
+        jid = self.c.post('/api/trim', json=q).json()['id']
+        for i in range(600):
+            s = self.c.get('/api/trim/' + jid).json()
+            if s['status'] in ('finished', 'error', 'cancelled'):
+                break
+            time.sleep(0.1)
+        self.assertEqual(s['status'], 'finished', s.get('error'))
+        r = s['result']
+        self.assertIn('EXYZ.txt', r['files'])
+        self.assertIn('COLLISON.txt', r['files'])
+        self.assertEqual(len(r['exyz']), 4)
+        self.assertEqual(r['exyz'][0]['e'][0], 500.0)
+
 
 if __name__ == '__main__':
     unittest.main()

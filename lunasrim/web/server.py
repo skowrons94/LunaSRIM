@@ -154,6 +154,8 @@ class TrimIn(BaseModel):
     trajectories: int = Field(50, ge=0, le=500)
     plot_xmin: float = 0.0        # Angstrom, depth window of the distributions
     plot_xmax: float = 0.0        # 0 = whole target
+    exyz: float = Field(0.0, ge=0)          # EXYZ.txt energy interval (eV), 0 = off
+    collisions: int = Field(0, ge=0, le=2)  # COLLISON.txt: 1 = ion collisions, 2 = with cascades
     title: str = 'LunaSRIM web'
 
 
@@ -303,7 +305,8 @@ def _trim_input(q):
     trim = TRIM(Target(layers), ion, number_ions=q.number_ions, calculation=q.calculation,
                 angle_ions=q.ion.angle, random_seed=seed, ranges=True, backscattered=True,
                 plot_xmin=q.plot_xmin if q.plot_xmax > 0 else 0, plot_xmax=q.plot_xmax,
-                transmit=True, sputtered=True, description=q.title[:60] or 'LunaSRIM web')
+                transmit=True, sputtered=True, collisions=q.collisions, exyz=q.exyz,
+                description=q.title[:60] or 'LunaSRIM web')
     return trim
 
 
@@ -314,6 +317,14 @@ def _thin(points, nmax=400):
     out = [points[int(i * step)] for i in range(nmax - 1)]
     out.append(points[-1])
     return out
+
+
+def _thin_curve(c, nmax=400):
+    if len(c['x']) > nmax:
+        idx = _thin(list(range(len(c['x']))), nmax)
+        c['x'] = [c['x'][i] for i in idx]
+        c['e'] = [c['e'][i] for i in idx]
+    return c
 
 
 def _run_job(job):
@@ -419,6 +430,17 @@ def _collect(job, eng):
         n = min(len(r.range3d), 20000)
         out['stopped'] = {'x': _lst(r.range3d.positions[0][:n]), 'y': _lst(r.range3d.positions[1][:n]),
                           'z': _lst(r.range3d.positions[2][:n]), 'count': len(r.range3d)}
+    if r.exyz is not None and len(r.exyz):
+        curves = {}
+        for n, e, x in zip(r.exyz.ion_number, r.exyz.energy, r.exyz.positions[0]):
+            n = int(n)
+            if n not in curves:
+                if len(curves) >= 100:
+                    break
+                curves[n] = {'n': n, 'x': [], 'e': []}
+            curves[n]['x'].append(float(x))
+            curves[n]['e'].append(float(e))
+        out['exyz'] = [_thin_curve(c) for c in curves.values()]
     out['trajectories'] = job.trajectories
     out['recoil_segments'] = job.recoils
     out['files'] = sorted(os.listdir(job.dir))

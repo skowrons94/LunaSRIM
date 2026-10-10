@@ -246,7 +246,8 @@ LATERAL.txt value of `HPbLong` differs in its last digits.
 - Output files: `TDATA`, `RANGE`, `LATERAL`, `IONIZ`, `PHONON`, `E2RECOIL`,
   `VACANCY` and `NOVAC`.
 - Per-ion files: `TRIMOUT`, `TRANSMIT`, `BACKSCAT`, `SPUTTER` and `RANGE_3D`.
-- Collision files: `COLLISON.txt` (both detail levels) and `EXYZ.txt`, with
+- Collision files: `COLLISON.txt` (both detail levels) and `EXYZ.txt` (also in
+  the web app, with an ion energy vs depth plot), with
   readers (`Results(...).collisions`, `Results(...).exyz`).
 - SR module: stopping and range tables, and stopping for energy lists.
 
