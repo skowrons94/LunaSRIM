@@ -22,6 +22,9 @@ _sin = math.sin
 _atan = math.atan
 
 
+F16 = f32(1.0 / 6.0)
+
+
 def _atn(x):
     return _atan(x)
 
@@ -652,7 +655,47 @@ class TrimEngine(object):
         self.tal.d980.add(w, b, lat)
 
     def on_kinchin_pease(self, st, atom, tt):
-        pass
+        """0x44bae0: Kinchin-Pease estimate of the damage of a recoil"""
+        t = self.t
+        tal = self.tal
+        inv = self.invbinw
+        lay = st.layer
+        b = int(self.bin_of(st.x))
+        eps = t.c724[lay] * tt
+        nu = tt / (1 + t.c728[lay] * ((eps + 0.4 * eps ** 0.75) + 3.4 * eps ** F16))
+        w = (tt - nu) * inv
+        tal.d964.add(w, 2, b)
+        lat = self.lat_bin(st.y)
+        tal.d97c.add(w, b, lat)
+        ed = t.ed[atom]
+        latt = t.lattice[atom]
+        if nu < ed:
+            w = nu * inv
+            tal.d970.add(w, 2, b)
+            lat = self.lat_bin(st.y)
+            tal.d980.add(w, b, lat)
+        elif nu < 2.5 * ed:
+            tal.g244 = tal.g244 + inv
+            tal.d9a0.add(inv, 1, b)
+            lat = self.lat_bin(st.y)
+            tal.d988.add(inv, b, lat)
+            tal.d95c.add(-(latt * inv), 1, b)
+            w = (nu - latt) * inv
+            tal.d970.add(w, 2, b)
+            lat = self.lat_bin(st.y)
+            tal.d980.add(w, b, lat)
+        elif nu > 0:
+            nv = (0.8 * nu) / (2 * ed)
+            tal.g244 = tal.g244 + inv * nv
+            tal.d9a0.add(inv, 1, b)
+            lat = self.lat_bin(st.y)
+            tal.d988.add(inv, b, lat)
+            tal.d95c.add(-(latt * inv), 1, b)
+            tal.d9a0.add((nv - 1) * inv, 2, b)
+            w = (nu - nv * latt) * inv
+            tal.d970.add(w, 2, b)
+            lat = self.lat_bin(st.y)
+            tal.d980.add(w, b, lat)
 
     def on_first_vacancy(self, st, atom, tt):
         """STARTRECOIL: the ion displaced the target atom"""
@@ -689,7 +732,7 @@ class TrimEngine(object):
             tal.g61c = tal.g61c + self.flag60c * inv
             tal.g230 = tal.g230 + 1
             tal.d994.add(1, rt + 1)
-            tal.d968.add(self.r_e[k] - self.t.surface[rt], rt + 1)
+            tal.d968.set((tal.d968.get(rt + 1) + self.r_e[k]) - self.t.surface[rt], rt + 1)
 
     def on_recoil_move(self, k, rt, rl, de):
         """0x456370 RECMOVEDATA: electronic loss of a recoil"""
