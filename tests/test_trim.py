@@ -17,7 +17,9 @@ from lunasrim.srim import run_trim        # noqa: E402
 REF = os.path.join(HERE, 'reference')
 
 # lines known to differ from TRIM.exe: {case: {file: number of lines}}
-KNOWN = {'HeAuC': {'TRANSMIT.txt': 2, 'TRIMOUT.txt': 2}}
+# (rare last-digit differences, see tests/reference/README.md)
+KNOWN = {'HeAuC': {'TRANSMIT.txt': 2, 'TRIMOUT.txt': 2},
+         'UFeKP': {'LATERAL.txt': 2, 'RANGE_3D.txt': 1}}
 
 
 def _lines(path):

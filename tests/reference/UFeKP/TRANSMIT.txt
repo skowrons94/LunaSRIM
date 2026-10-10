@@ -1,0 +1,20 @@
+============================== SRIM-2013.00 ==============================
+==============================================================================
+=================  TRANSMIT.txt : File of Transmitted Ions  ==================
+=  This file tabulates the kinetics of ions or atoms leaving the target.     =
+=  Column #1: S= Sputtered Atom, B= Backscattered Ion, T= Transmitted Ion.   =
+=  Col.#2: Ion Number, Col.#3: Z of atom leaving, Col.#4: Atom energy (eV).  =
+=  Col.#5-7: Last location:  X= Depth into target, Y,Z= Transverse axes.     =
+=  Col.#8-10: Cosines of final trajectory.                                   =
+= *** This data file is in the same format as TRIM.DAT (see manual for uses).=
+====== TRIM Calc.=  U(50 MeV) ==> Steel(  4 um) ==============================
+ Ion  Atom   Energy        Depth       Lateral-Position        Atom Direction      
+ Numb Numb    (eV)          X(A)        Y(A)       Z(A)      Cos(X)  Cos(Y) Cos(Z) 
+T    3 92 .3349370E+07   4000140E-02 -.1976E+04 -.1205E+04   .9892403  .1335236  .0597914
+T    5 92 .2248869E+07   4000173E-02 -.3818E+04  .4308E+04   .8851273  .1222837  .4489947
+T    6 92 .4893187E+05   4000033E-02 -.2045E+04 -.6453E+03   .8560475  .3181859 -.4073578
+T   23 92 .1351642E+07   4000050E-02 -.2390E+04  .7830E+03   .9721177 -.0759865  .2218407
+T   30 92 .2294393E+07   4000015E-02  .2002E+04  .4190E+03   .9915877 -.0209263  .1277338
+T   31 92 .1059510E+07   4000066E-02 -.6245E+04  .9627E+03   .9459101 -.1540515  .2855209
+T   35 92 .3327164E+07   4000138E-02 -.1641E+04  .3392E+04   .9702998  .1451319  .1935329
+T   38 92 .1198683E+07   4000182E-02 -.4096E+04  .1570E+04   .8236503 -.5631598 -.0667177

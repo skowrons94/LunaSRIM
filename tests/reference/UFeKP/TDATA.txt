@@ -1,0 +1,47 @@
+====== Steel =======
+        SRIM-2013.00
+=======================================
+      Data  of  TRIM  Calculation      
+=======================================
+====== TRIM Calc.=  U(50 MeV) ==> Steel(  4 um) ==============================
+------------------------------------------------------------------------------
+--------------------------------------------------------------------
+    Recoil/Damage Calculations made with Kinchin-Pease Estimates    
+--------------------------------------------------------------------
+Ion =  U (92)   Ion Mass= 238.0510
+Energy  = 5000000.E-02 keV
+Ion Angle to Surface = 0 degrees
+============= TARGET MATERIAL ======================================
+  Layer # 1 - Steel
+  Layer # 1 - Bottom Depth=     4.E+04 A
+  Layer # 1- Density = 8.575E22 atoms/cm3 = 7.9 g/cm3
+  Layer # 1- Fe = 76.9 Atomic Percent = 77.4 Mass Percent
+  Layer # 1- Cr = 15.3 Atomic Percent = 14.4 Mass Percent
+  Layer # 1- Ni = 7.69 Atomic Percent = 8.13 Mass Percent
+====================================================================
+Target energies for target atom = Fe
+    Displacement = 25 eV, Binding = 3 eV, Surface = 4.34 eV
+Target energies for target atom = Cr
+    Displacement = 25 eV, Binding = 3 eV, Surface = 4.12 eV
+Target energies for target atom = Ni
+    Displacement = 25 eV, Binding = 3 eV, Surface = 4.46 eV
+====================================================================
+Depth Range of Tabulated Data=  000000.E+00  -  400000.E-01  Angstroms
+====================================================================
+Total Ions calculated =  000040
+Average Range         =   36116.E+00 Angstroms
+Average Straggling    =   26931.E-01 Angstroms
+Average Vacancy/Ion   =   10280.E+01
+====================================================================
+Total Backscattered Ions=  0 
+Total Transmitted Ions  =  8 
+====================================================================
+See files SRIM Outputs\*.txt for tables :
+   TDATA.txt    -- Details of the calculation.
+   RANGE.txt    -- Final distribution of Ions/Recoils
+   VACANCY.txt  -- Distribution of Vacancies
+   IONIZ.txt    -- Distribution of Ionization
+   PHONON.txt   -- Distribution of Phonons
+   E2RECOIL.txt -- Energy transferred to recoils
+   NOVAC.txt    -- Replacement collisions
+   LATERAL.txt  -- Lateral Spread of Ions

@@ -9,8 +9,8 @@ TRIM is reproduced **ion by ion**: same random number sequence, same
 physics, same Visual Basic arithmetic (including Single precision
 variables) and the same output files. For the reference cases in
 `tests/reference`, the files written by lunasrim are identical line by line
-to those of the original `TRIM.exe`. The only exception is two direction
-cosines in the 7th digit; see [Validation](#validation).
+to those of the original `TRIM.exe`. The only exceptions are a few last
+digits caused by math-library rounding; see [Validation](#validation).
 
 No Windows, wine or docker is needed to run calculations; the package is
 pure Python (numpy is optional and only used by the result readers).
@@ -116,9 +116,18 @@ tools/run_real_trim.sh some/dir          # run TRIM.exe (wine, docker) on some/d
 tools/validate.py some/dir               # run lunasrim on it and diff every output file
 ```
 
-Known difference: in `HeAuC`, 2 MeV He transmitted through 5.3 um, two of
-the 298 transmitted ions have a direction cosine that differs in the 7th
-digit.
+Known differences, in the last printed digit:
+
+- In `HeAuC`, two of the 298 transmitted ions have a direction cosine that
+  differs in the 7th digit.
+- In `UFeKP`, one ion's final lateral position differs in the 5th digit.
+
+The trajectory of that UFeKP ion was compared with TRIM.exe running in an
+x86 emulator, collision by collision (3599 collisions), and the two agree
+exactly. The emulator replaces the VB runtime's math functions with Python
+ones. So these rare differences come from the last bits of the math library
+(the Windows runtime under wine versus the C library behind Python), not
+from the algorithm.
 
 ## What is implemented
 

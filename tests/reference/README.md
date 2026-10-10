@@ -17,6 +17,17 @@ reproduces them line by line (apart from the calculation date).
 | ArCuSP | monolayer / sputtering (calculation 3) | |
 | BSiPW  | Kinchin-Pease | plot window (Xmin, Xmax) |
 | OAlFC  | full cascade  | three layers with non integer widths |
+| UFeKP  | Kinchin-Pease | 50 MeV U in steel (fractional stoichiometries) |
 
-Known differences: in HeAuC two direction cosines of transmitted ions
-(TRANSMIT.txt/TRIMOUT.txt) differ in the 7th digit.
+Known differences (last printed digit only):
+
+* HeAuC: two direction cosines of transmitted ions (TRANSMIT.txt/TRIMOUT.txt).
+* UFeKP: the lateral position of ion 29 (RANGE_3D.txt, 5th digit) and two
+  LATERAL.txt values that depend on it.
+
+For UFeKP the whole trajectory of ion 29 (3599 collisions) was checked
+against TRIM.exe running in an x86 emulator with Python implementations of
+the VB runtime math functions: they agree bit for bit.  The differences
+with TRIM.exe under wine therefore come from the last bits of the
+floating point library functions (x87 / msvbvm50 versus the C library used
+by Python), which occasionally change a printed digit.
