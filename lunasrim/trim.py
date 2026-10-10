@@ -12,6 +12,7 @@ import math
 from .rng import TrimRandom
 from .trim_setup import TrimTarget, PI
 from .trimin import f32
+from .tally import F32
 from .tally import TrimTally, vb_int
 
 _sqrt = math.sqrt
@@ -47,9 +48,9 @@ class TrimEngine(object):
         t = self.t
         self.e0 = t.e0
         self.ef = 1                       # lowest energy followed (eV)
-        self.xmin = 0.0
+        self.xmin = t.xmin
         self.xmax = t.xmax
-        self.binw = (self.xmax - self.xmin) / 100
+        self.binw = t.binwidth            # VB Single for Integer widths
         self.nlay = t.nlay
         self.cnt518 = 0
         self.grid_g = t.grid_g
@@ -75,7 +76,7 @@ class TrimEngine(object):
         self.ncx = self.ncy = self.ncz = self.nsine = 0.0
         self.tal = TrimTally(t.nel, t.nlay, log)
         self.out = None              # TrimOutput writing the SRIM Outputs files
-        self.invbinw = 1 / self.binw
+        self.invbinw = t.inv_binwidth
         # average lattice binding energy (G4fd93c)
         acc = 0
         for i in range(1, t.nel + 1):
@@ -118,7 +119,7 @@ class TrimEngine(object):
         """returns (e, dE, straggling); e may be raised to 0.001 (written back
         to the caller's variable, a Single for recoils)"""
         if e < 0.001:
-            e = f32(0.001) if single else 0.001
+            e = F32(0.001) if single else 0.001
         g = self.grid_g
         k = int(math.floor(_log(e) / g)) + 1
         if k > 999:
@@ -488,7 +489,7 @@ class TrimEngine(object):
                         state = 'NEXT'
                         continue
                 rl = self.find_layer(rx[k])
-                e, de, strag = self.eloss(rt, re[k], lr, rl, True)
+                e, de, strag = self.eloss(rt, F32(re[k]), lr, rl, True)
                 if e != re[k]:
                     re[k] = f32(e)
                 if de > re[k]:
@@ -785,7 +786,7 @@ class TrimEngine(object):
         b = int(self.bin_of(x))
         inside = 1 if (x > self.xmin and x < self.xmax) else 0
         if inside == 1:
-            w = self.r_e[k] * inv
+            w = F32(self.r_e[k]) * inv
             tal.d970.add(w, 2, b)
             lat = self.lat_bin(self.st_y)
             tal.d980.add(w, b, lat)
@@ -833,7 +834,7 @@ class TrimEngine(object):
         if x < self.xmin or x > self.xmax:
             return
         b = int(self.bin_of(x))
-        w = e * self.invbinw
+        w = F32(e) * self.invbinw
         self.tal.d970.add(w, 2, b)
         lat = self.lat_bin(self.st_y)
         self.tal.d980.add(w, b, lat)

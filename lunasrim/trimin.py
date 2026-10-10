@@ -107,8 +107,8 @@ class TrimInput(object):
         self.file_exyz = 0
         self.target_name = 'target'
         self.plot_type = 5
-        self.xmin = 0.0
-        self.xmax = 0.0
+        self.xmin = 0
+        self.xmax = 0
         self.elements = []
         self.layers = []
         self.ed = []

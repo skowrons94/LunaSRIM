@@ -7,6 +7,76 @@ the ion, atoms 2..n+1 are the target elements, layers are 1..nlay).
 """
 
 
+import struct
+
+
+def _f32(x):
+    return struct.unpack('<f', struct.pack('<f', x))[0]
+
+
+def _is_r4_partner(o):
+    """operand that keeps a Single result (Single or Integer/Empty)"""
+    return isinstance(o, F32) or (isinstance(o, int) and -32768 <= o <= 32767)
+
+
+class F32(float):
+    """A VB ``Single`` held in a Variant.
+
+    Variant arithmetic of TRIM follows the OLE rules: Single op Single and
+    Single op Integer give a Single (rounded to 24 bits), anything with a
+    Double gives a Double.  The tallies of TRIM are Variants that start
+    Empty, so adding a Single (e.g. 1/bin width) keeps them Single.
+    """
+    __slots__ = ()
+
+    def __new__(cls, x):
+        return float.__new__(cls, _f32(float(x)))
+
+    def _op(self, o, r):
+        if _is_r4_partner(o):
+            return F32(r)
+        return r
+
+    def __add__(self, o):
+        return self._op(o, float(self) + o)
+
+    def __radd__(self, o):
+        return self._op(o, o + float(self))
+
+    def __sub__(self, o):
+        return self._op(o, float(self) - o)
+
+    def __rsub__(self, o):
+        return self._op(o, o - float(self))
+
+    def __mul__(self, o):
+        return self._op(o, float(self) * o)
+
+    def __rmul__(self, o):
+        return self._op(o, o * float(self))
+
+    def __truediv__(self, o):
+        return self._op(o, float(self) / o)
+
+    def __rtruediv__(self, o):
+        return self._op(o, o / float(self))
+
+    def __neg__(self):
+        return F32(-float(self))
+
+    def __abs__(self):
+        return F32(abs(float(self)))
+
+    def __pow__(self, o):           # ^ always gives a Double
+        return float(self) ** o
+
+    def __rpow__(self, o):
+        return o ** float(self)
+
+    def __repr__(self):
+        return float.__repr__(self)
+
+
 class VBArray(object):
     """flat VB array with given (lbound, count) per dimension"""
     __slots__ = ('name', 'dims', 'data', 'log')

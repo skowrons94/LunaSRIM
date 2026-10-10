@@ -453,10 +453,12 @@ class TrimDistributions(object):
     # ------------------------------------------------------ shared pieces
     def _head(self, out, lines, see):
         self._title_block(out, lines)
+        if see is None:
+            return
         out.append(see)
         out.append(' Ion    = ' + symbol2(self.ti.ion_z) + '   Energy =' + vb_str(self.ti.energy) + ' keV')
 
-    def _target_block2(self, out, pad_layer, width_fmt, width_rset):
+    def _target_block2(self, out, pad_layer, width_fmt, width_rset, unit=' A ;'):
         """target description used by IONIZ/VACANCY/PHONON/E2RECOIL/NOVAC"""
         ti, t = self.ti, self.t
         out.append('============= TARGET MATERIAL ======================================')
@@ -468,7 +470,7 @@ class TrimDistributions(object):
             w = vb_format(t.width[j], width_fmt)
             if width_rset:
                 w = ('%10s' % w)[-10:]
-            out.append('Layer Width = ' + w + ' A ;')
+            out.append('Layer Width = ' + w + unit)
             out.append(self.dens_line[j])
             for s in self.elem_lines[j]:
                 if s:
@@ -583,7 +585,7 @@ class TrimDistributions(object):
                          ' See SRIM Outputs\\TDATA.txt for calc. details',
                          '======================================== '],
                    ' See file :  SRIM Outputs\\TDATA.txt calculation data')
-        self._target_block2(out, True, '0.E+00', True)
+        self._target_block2(out, True, '0.E+00', True, ' AAA ;')
         out.append(' Total Ions calculated =' + vb_format(self.ions, '0.00'))
         out.append('=' * 56)
         out.append('  Table Units are  >>>> Phonons /(Angstrom-Ion)  <<<<  ')
@@ -607,7 +609,7 @@ class TrimDistributions(object):
                          ' See SRIM Outputs\\TDATA.txt for calc. details ',
                          '======================================='],
                    ' See file: SRIM Outputs\\TDATA.txt for data about the calculation')
-        self._target_block2(out, True, '0.E+00', True)
+        self._target_block2(out, True, '00000.E+00', False, ' AAA ;')
         out.append(' Total Ions calculated =' + vb_format(self.ions, '0.00'))
         out.append('=' * 59)
         out.append('  Table Energy Units are  >>>>  eV /(Angstrom-Ion)  <<<<  ')
@@ -648,8 +650,16 @@ class TrimDistributions(object):
                          '        Replacement Collisions       ',
                          ' See SRIM Outputs\\TDATA.txt for calc. details   ',
                          '========================================='],
-                   ' See file: SRIM Outputs\\TDATA.txt for data about the calculation')
-        self._target_block2(out, True, '0.E+00', True)
+                   None)
+        if self.kp == 1:
+            out.append('')
+            out.append(' There are NO Replacement Collisions calculated.')
+            out.append(' You must execute a full TRIM cascade calculation for these.')
+            self._save(f, out)
+            return
+        out.append(' See file: SRIM Outputs\\TDATA.txt for data about the calculation')
+        out.append(' Ion    = ' + symbol2(self.ti.ion_z) + '   Energy =' + vb_str(self.ti.energy) + ' keV')
+        self._target_block2(out, True, '0.E+00', True, ' AAA ;')
         out.append(' Total Ions calculated =' + vb_format(self.ions, '0.00'))
         self._totals(out)
         out.append('=' * 64)
@@ -662,6 +672,54 @@ class TrimDistributions(object):
                        ('%11s' % vb_format(tal.d96c.get(i) / self.ions, '0000.000000'))[-11:])
         self._save(f, out)
 
+    # -------------------------------------------------------------- LATERAL
+    def write_lateral(self):
+        """0x4759f0: LATERAL.txt"""
+        ti, t, tal = self.ti, self.t, self.tal
+        f, out = self._open('LATERAL.txt')
+        self._title_block(out, ['=====================================',
+                                '       LATERAL SPREAD OF IONS        ',
+                                ' See SRIM Outputs\\TDATA.txt for calc. details   ',
+                                '\xcc===================================\xca' + '=' * 35,
+                                '  NOTE : The Projected LATERAL Spread is based on a projection on a     ',
+                                '  plane- just the way the XY or XZ displays look on the screen.  The    ',
+                                '  Lateral Projected Range is defined as the average of the absolute     ',
+                                '  values of the projected lateral displacements from the X-axis.        ',
+                                '  One use of this range: If a mask covers half of a target, the lateral ',
+                                '  range is the distance under the mask where the concentration drops to ',
+                                '  25% (at the mask edge the concentration= 50% of the uniform value).   ',
+                                ' ' * 72,
+                                '  The Radial Range is the mean radial displacement range from the       ',
+                                '  X-axis a-uming cylindrical symmetry.                                 ',
+                                '=' * 72])
+        out.append(' See file: SRIM Outputs\\TDATA.txt for data about the calculation')
+        out.append(' Ion    = ' + symbol2(ti.ion_z) + '   Energy =' + vb_str(ti.energy) + ' keV')
+        out.append(' Total Ions calculated =' + vb_format(self.ions, '0.00'))
+        self._target_block2(out, True, '00000.E+00', False, ' AAA ;')
+        f11 = lambda v: ('%11s' % vb_format(v, '000000.E+00'))[-11:]
+        out.append(' Ion Average Range = ' + f11(tal.g_a38) + ' A   ' + 'Straggling = ' + f11(tal.g_a48) + ' A')
+        out.append(' Ion Lateral Range = ' + f11(tal.g_a10) + ' A   ' + 'Straggling = ' + f11(tal.g_a20) + ' A')
+        out.append(' Ion Radial  Range = ' + f11(tal.g_9f8) + ' A   ' + 'Straggling = ' + f11(tal.g_a08) + ' A')
+        out.append(EQ68)
+        out.append('                LATERAL     Projected      LATERAL        Radial    ')
+        out.append('  TARGET       PROJ.RANGE   Straggling      RADIAL      Straggling  ')
+        out.append('  DEPTH (A)   (Angstroms)   (Angstroms)   (Angstroms)   (Angstroms) ')
+        out.append('------------ ------------- ------------- ------------- -------------')
+        r14 = lambda v: ('%14s' % vb_format(v, '00000000.E+00 '))[-14:]
+        inv = self.eng.invbinw
+        for i in range(1, 101):
+            n = tal.d98c.get(1, i) / inv
+            if n == 0:
+                a = c = b = d = 0
+            else:
+                a = tal.d9b0.get(1, i) / n
+                b = tal.d9ac.get(1, i) / n
+                c = _sqrt(tal.d9b0.get(2, i) / n)
+                d = _sqrt(abs(tal.d9ac.get(2, i) / n - (tal.d9ac.get(1, i) / n) ** 2))
+            out.append(('%13s' % vb_format(self.depth[i], '0000000.E+00 '))[-13:] +
+                       r14(a) + r14(c) + r14(b) + r14(d))
+        self._save(f, out)
+
     def write_all(self):
         self.write_range()
         self.write_ioniz()
@@ -669,3 +727,4 @@ class TrimDistributions(object):
         self.write_e2recoil()
         self.write_vacancy()
         self.write_novac()
+        self.write_lateral()

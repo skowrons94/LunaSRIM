@@ -8,6 +8,7 @@ import math
 from . import data_files
 from .stopping import electronic_stopping_element, phase_factor
 from .trimin import f32
+from .tally import F32
 
 PI = 3.1415926          # TRIM's value of pi
 
@@ -15,6 +16,19 @@ PI = 3.1415926          # TRIM's value of pi
 def vbint(x):
     """VB CInt/CLng (round half to even)"""
     return int(round(x))
+
+
+def _sum_kind(values):
+    """VB type of the Variant sum of TRIM.IN numbers: 'I2' while all are
+    Integers that fit 16 bits, else 'R8' (Long sums give Double bins)"""
+    acc = 0
+    for v in values:
+        if not isinstance(v, int):
+            return 'R8'
+        acc += v
+        if not -32768 <= acc <= 32767:
+            return 'R8'
+    return 'I2'
 
 
 class Layer(object):
@@ -47,10 +61,24 @@ class TrimTarget(object):
         for w in self.width:
             acc = w if acc is None else w + acc
             self.depth.append(acc)
-        self.xmin = 0
-        self.xmax = self.depth[-1]
-        self.binwidth = (self.xmax - self.xmin) / 100
-        self.inv_binwidth = 1 / self.binwidth
+        # plot window and depth bins.  TRIM keeps these in Variants: the
+        # widths read from TRIM.IN are Integers when written without a
+        # decimal point, and Integer / Integer gives a Single.
+        self.xmin = ti.xmin
+        if ti.xmax == 0:
+            self.xmax = self.depth[-1]
+            xkind = _sum_kind(self.width)
+        else:
+            self.xmax = ti.xmax
+            xkind = _sum_kind([ti.xmax])
+        if not (isinstance(self.xmin, int) and -32768 <= self.xmin <= 32767):
+            xkind = 'R8'
+        if xkind == 'I2':
+            self.binwidth = F32((self.xmax - self.xmin) / 100)
+            self.inv_binwidth = F32(1 / float(self.binwidth))
+        else:
+            self.binwidth = (self.xmax - self.xmin) / 100
+            self.inv_binwidth = 1 / self.binwidth
         # target composition
         self.phase = [l.phase for l in ti.layers]
         self.bragg = [l.bragg for l in ti.layers]
