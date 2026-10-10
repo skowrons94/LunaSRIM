@@ -1,9 +1,10 @@
 # LunaSRIM
 
-A Python 3 re-implementation of **SRIM-2013** (TRIM Monte Carlo transport of
-ions in matter, plus the SRIM stopping powers), obtained by reverse
+A Python 3 re-implementation of **SRIM-2013**, obtained by reverse
 engineering `TRIM.exe` and `SRModule.exe` from the
-[costrouc/pysrim](https://github.com/costrouc/pysrim) docker image.
+[costrouc/pysrim](https://github.com/costrouc/pysrim) docker image. It
+covers TRIM (Monte Carlo transport of ions in matter) and the SR module
+(tables of stopping powers, ranges and straggling).
 
 TRIM is reproduced **ion by ion**: same random number sequence, same
 physics, same Visual Basic arithmetic (including Single precision
@@ -11,6 +12,7 @@ variables) and the same output files. For the reference cases in
 `tests/reference`, the files written by lunasrim are identical line by line
 to those of the original `TRIM.exe`. The only exceptions are a few last
 digits caused by math-library rounding; see [Validation](#validation).
+The stopping and range tables are identical to those of `SRModule.exe`.
 
 No Windows, wine or docker is needed to run calculations; the package is
 pure Python (numpy is optional and only used by the result readers).
@@ -66,7 +68,29 @@ engine = run_trim(TrimInput.read('TRIM.IN'), 'SRIM Outputs')
 VACANCY, NOVAC, LATERAL, TRANSMIT, BACKSCAT, SPUTTER, RANGE_3D and TRIMOUT
 files. It works the same for files written by the real SRIM.
 
-### Stopping powers
+### Stopping and range tables (SR module)
+
+```sh
+python -m lunasrim SR.IN            # writes the table file named in SR.IN
+```
+
+```python
+from lunasrim import sr
+sr.run('SR.IN')
+rows = sr.stopping_table(1, 1.008, [(6, 1, 12.011)], density=2.253,
+                         emin=10, emax=10000, units=7)
+# rows: (E keV, S_elec, S_nuc, projected range A, long. straggling A, lat. straggling A)
+```
+
+The SR.IN format is the one of SRIM's "SR Module" and "Stopping and Range
+Tables". With E-Min = E-Max = 0, a list of energies follows and only the
+stopping powers are written. The range integration is the module's own
+PRAL-type calculation. It runs on SRIM's energy grid with 50 sub-steps per
+interval and accumulates the energy, which is why SRIM prints rows like
+`999.999 eV`. For inputs where SRModule.exe stops with a run-time error (a
+negative straggling variance), `sr.SrError` is raised.
+
+The underlying stopping powers are also available directly:
 
 ```python
 from lunasrim import stopping
@@ -74,10 +98,6 @@ stopping.electronic_stopping(1, 1.008, 6, 100.0)      # H in C at 100 keV, eV/(1
 stopping.nuclear_stopping(1, 1.008, 6, 12.011, 100.0)
 stopping.compound_stopping(8, 15.999, [(1, 1.008, 2), (8, 15.999, 1)], 1000.0, phase=1)
 ```
-
-These are the SRIM-2013 stopping routines of the SR module (proton, helium
-and lithium fits, heavy ion scaling, Bethe-Bloch at high energy, phase and
-compound corrections). They agree with `SRModule.exe` to better than 1e-9.
 
 ### Example scripts
 
@@ -104,6 +124,11 @@ lunasrim:
 - several layers, including non-integer widths;
 - oblique incidence and a plot window.
 
+`tests/reference_sr/` does the same for `SRModule.exe` and 13 `SR.IN`
+files: H to U ions, solids and gases, all 8 stopping units, eV to GeV
+energies, and Bragg corrections, in both table and list modes. All of them
+are identical to the original output.
+
 ```sh
 python -m unittest discover tests        # or: pytest
 ```
@@ -114,6 +139,8 @@ The tools to produce such references are:
 tools/extract_srim.sh srim               # copy SRIM-2013 out of the docker image
 tools/run_real_trim.sh some/dir          # run TRIM.exe (wine, docker) on some/dir/TRIM.IN
 tools/validate.py some/dir               # run lunasrim on it and diff every output file
+tools/run_real_sr.sh some/dir            # run SRModule.exe on some/dir/SR.IN
+tools/validate_sr.py some/dir            # compare lunasrim's table with it
 ```
 
 Known differences, in the last printed digit:
@@ -140,15 +167,14 @@ from the algorithm.
 - Output files: `TDATA`, `RANGE`, `LATERAL`, `IONIZ`, `PHONON`, `E2RECOIL`,
   `VACANCY` and `NOVAC`.
 - Per-ion files: `TRIMOUT`, `TRANSMIT`, `BACKSCAT`, `SPUTTER` and `RANGE_3D`.
+- SR module: stopping and range tables, and stopping for energy lists.
 
 Not implemented:
 
 - `COLLISON.txt` and `EXYZ.txt`;
 - TRIM's special modes 4-8 (neutron and ion-only calculations; partly
   present but untested);
-- auto-save and restore of a calculation;
-- the SR module's range and straggling tables (only the stopping powers are
-  available).
+- auto-save and restore of a calculation.
 
 ## How it was done
 
@@ -180,6 +206,7 @@ for exact agreement:
   - `trim.py`: the Monte Carlo engine.
   - `trim_setup.py`: target constants.
   - `stopping.py`: stopping powers.
+  - `sr.py`: SR module (stopping and range tables).
   - `output.py`: output files.
   - `srim.py`: API.
   - `results.py`: readers.
@@ -189,7 +216,7 @@ for exact agreement:
   - `tally.py`: distributions.
   - `data/`: SRIM-2013 data files (`SCOEF03.DAT`, `SNUC03.dat`, `ATOMDATA`; (c) J. F. Ziegler).
 - `scripts/`: example calculations.
-- `tests/`: regression tests against TRIM.exe.
+- `tests/`: regression tests against TRIM.exe and SRModule.exe.
 - `tools/`: helpers to extract and run the original SRIM through docker and to validate lunasrim against it.
 
 SRIM is written by J. F. Ziegler, J. P. Biersack and M. D. Ziegler
