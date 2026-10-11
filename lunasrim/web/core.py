@@ -34,12 +34,20 @@ class ApiError(Exception):
 
 
 # ------------------------------------------------------------------- input
+_LABEL = {'z': 'element', 'emin': 'minimum energy', 'emax': 'maximum energy', 'energy': 'ion energy',
+          'stoich': 'stoichiometry', 'density': 'density', 'width': 'layer width',
+          'number_ions': 'number of ions'}
+
+
 def _num(d, key, default=None, kind=float, lo=None, hi=None, lo_open=False, required=False):
+    """a number of the request: ``default`` if the key is missing; null (an
+    empty or invalid input field in the browser) gives the default too,
+    or an error if the value is ``required``"""
     v = d.get(key, default) if isinstance(d, dict) else default
     if v is None:
         if required:
-            raise ApiError(422, '%s: field required' % key)
-        return None
+            raise ApiError(422, '%s: enter a number' % _LABEL.get(key, key))
+        return default
     try:
         if kind is int:
             if isinstance(v, float) and v != int(v):
@@ -62,11 +70,14 @@ def _ion(d):
     if not isinstance(d, dict):
         raise ApiError(422, 'ion: field required')
     return SimpleNamespace(z=_num(d, 'z', kind=int, lo=1, hi=92, required=True), mass=_num(d, 'mass'),
-                           energy=_num(d, 'energy', 100.0), angle=_num(d, 'angle', 0.0))
+                           energy=_num(d, 'energy'), angle=_num(d, 'angle', 0.0))
 
 
 def _atom(d):
-    return SimpleNamespace(z=_num(d, 'z', kind=int, lo=1, hi=92, required=True), stoich=_num(d, 'stoich', 1.0),
+    if not isinstance(d, dict):
+        raise ApiError(422, 'elements: not valid')
+    return SimpleNamespace(z=_num(d, 'z', kind=int, lo=1, hi=92, required=True),
+                           stoich=_num(d, 'stoich', 1.0, required=True),
                            mass=_num(d, 'mass'), displacement=_num(d, 'displacement'),
                            lattice=_num(d, 'lattice'), surface=_num(d, 'surface'))
 
@@ -80,7 +91,7 @@ def _material(d):
     return SimpleNamespace(name=str(d.get('name', 'target') or ''), elements=[_atom(a) for a in els],
                            density=_num(d, 'density', lo=0, lo_open=True, required=True),
                            gas=bool(d.get('gas', False)), correction=_num(d, 'correction', 1.0),
-                           width=_num(d, 'width', 10000.0))
+                           width=_num(d, 'width', 10000.0, required=True))
 
 
 # ----------------------------------------------------------------- data
@@ -170,7 +181,7 @@ def _table(si):
 def stopping(d):
     """POST /api/stopping"""
     ion, target = _ion(d.get('ion')), _material(d.get('target'))
-    emin, emax = _num(d, 'emin', 10.0), _num(d, 'emax', 10000.0)
+    emin, emax = _num(d, 'emin', 10.0, required=True), _num(d, 'emax', 10000.0, required=True)
     units = _num(d, 'units', 5, kind=int, lo=1, hi=8)
     if not (0 < emin <= emax):
         raise ApiError(400, 'need 0 < E-min <= E-max')
@@ -204,7 +215,7 @@ def implant(d):
         raise ApiError(400, 'no energies')
     if len(energies) > 50:
         raise ApiError(400, 'at most 50 energies')
-    energies = [_num({'energy': v}, 'energy') for v in energies]
+    energies = [_num({'energy': v}, 'energy', required=True) for v in energies]
     res = []
     for k, en in enumerate(energies):
         if en <= 0:
@@ -239,13 +250,15 @@ def trim_request(d, max_ions):
     q = SimpleNamespace(
         ion=_ion(d.get('ion')),
         layers=[_material(m) for m in (d.get('layers') or [])],
-        number_ions=_num(d, 'number_ions', 1000, kind=int, lo=1),
+        number_ions=_num(d, 'number_ions', 1000, kind=int, lo=1, required=True),
         calculation=_num(d, 'calculation', 1, kind=int, lo=1, hi=3),
         seed=_num(d, 'seed', kind=int),
         trajectories=_num(d, 'trajectories', 50, kind=int, lo=0, hi=500),
         plot_xmin=_num(d, 'plot_xmin', 0.0), plot_xmax=_num(d, 'plot_xmax', 0.0),
         exyz=_num(d, 'exyz', 0.0, lo=0), collisions=_num(d, 'collisions', 0, kind=int, lo=0, hi=2),
         title=str(d.get('title', 'LunaSRIM web') or ''))
+    if q.ion.energy is None:
+        raise ApiError(422, 'ion energy: enter a number')
     if q.number_ions > max_ions:
         raise ApiError(400, 'at most %d ions here' % max_ions)
     if not q.layers:

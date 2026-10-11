@@ -34,6 +34,24 @@ class TestStaticApi(unittest.TestCase):
         st, d = self.call('GET', '/api/nothing')
         self.assertEqual(st, 404)
 
+    def test_empty_fields(self):
+        # an empty or invalid input field arrives as null: a message, not a crash
+        ion = {'z': 18, 'energy': None}
+        layer = dict(SI, width=2000)
+        for path, body, word in [
+                ('/api/trim', {'ion': ion, 'layers': [layer]}, 'ion energy'),
+                ('/api/trim', {'ion': dict(ion, energy=50), 'layers': [dict(layer, width=None)]}, 'layer width'),
+                ('/api/stopping', {'ion': {'z': 1}, 'target': SI, 'emin': None, 'emax': 10}, 'minimum energy'),
+                ('/api/implant', {'ion': {'z': 5}, 'target': SI, 'energies': [None]}, 'ion energy')]:
+            st, d = self.call('POST', path, body)
+            self.assertEqual(st, 422, (path, d))
+            self.assertIn(word, d['detail'])
+        # optional settings left empty take their defaults
+        st, d = self.call('POST', '/api/trim', {'ion': dict(ion, energy=50), 'layers': [layer], 'number_ions': 5,
+                                                'seed': None, 'plot_xmin': None, 'plot_xmax': None,
+                                                'exyz': None, 'trajectories': None})
+        self.assertEqual(st, 200, d)
+
     def test_trim_in_slices(self):
         st, j = self.call('POST', '/api/trim', {'ion': {'z': 18, 'energy': 50}, 'layers': [SI],
                                                  'number_ions': 20, 'seed': 5, 'trajectories': 3})
