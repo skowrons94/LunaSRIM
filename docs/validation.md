@@ -54,7 +54,7 @@ Together they cover ions from H to U, all eight stopping units and energies from
 python -m unittest discover tests        # or: pytest
 ```
 
-The suite runs lunasrim on all reference cases and checks the web application, the command line and the analytic energy straggling. On an Intel Xeon processor at 2.80 GHz the whole suite (124 tests) took 202 s.
+The suite runs lunasrim on all reference cases and checks the web application, the command line and the analytic energy straggling. On an Intel Xeon processor at 2.80 GHz the whole suite (125 tests) took 190 s.
 
 ## Processor dependence of the x87 arithmetic
 
@@ -87,4 +87,4 @@ The campaign found two differences in the output files, which we fixed: the cont
 
 ## Energy straggling
 
-The analytic energy loss and straggling of [physics.md](physics.md), Section 6, is not part of SRIM, so it cannot be compared with SRIM output. We compare it instead with lunasrim's TRIM. For five ion-layer pairs the exit energies agree within 1.1 keV and the TRIM widths of 4000 transmitted ions are 1.6 to 7.0 % larger than the analytic widths; `tests/test_straggling.py` checks one of these cases with 600 ions. The table is in [physics.md](physics.md), Section 6.
+The analytic energy loss and straggling of [physics.md](physics.md), Section 6, is not part of SRIM, so it cannot be compared with SRIM output. We compare it instead with lunasrim's TRIM. For five ion-layer pairs the exit energies agree within 1.1 keV and the TRIM widths of 4000 transmitted ions are 1.5 to 7.0 % larger than the analytic widths; `tests/test_straggling.py` checks one of these cases with 600 ions. The table is in [physics.md](physics.md), Section 6.

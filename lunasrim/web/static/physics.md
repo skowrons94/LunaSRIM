@@ -14,7 +14,7 @@ $$
 N = \frac{N_A\,\rho}{\bar M_2}, \tag{1}
 $$
 
-where $N_A$ is Avogadro's number. TRIM uses $N_A = 0.6022$ in units of 10²⁴ mol⁻¹, which gives $N$ in atoms/Å³. The SR module uses $6.022\times10^{23}$ for the atomic density printed in the table header, $0.60223$ to convert stopping cross sections into stopping powers, and $0.6023$ in the range integration. We keep the three values because they change the last printed digits. A stopping cross section $S$ in eV/(10¹⁵ atoms/cm²) corresponds to the stopping power $10\,N S$ in eV/Å when $N$ is in atoms/Å³.
+where $N_A$ is Avogadro's number. TRIM uses $N_A = 0.6022$ in units of 10²⁴ mol⁻¹, which gives $N$ in atoms/Å³. The SR module uses $6.022\times10^{23}$ for the atomic density printed in the table header and for the printed stopping powers, $0.60223$ for the electronic stopping power inside the range integration, and $0.6023$ for the nuclear stopping power inside the range integration. We keep the three values because they change the last printed digits. A stopping cross section $S$ in eV/(10¹⁵ atoms/cm²) corresponds to the stopping power $10\,N S$ in eV/Å when $N$ is in atoms/Å³.
 
 Reduced energies use the universal screening length of Ziegler, Biersack and Littmark [1],
 
@@ -102,7 +102,7 @@ $$
 S_e(E) = \sum_i f_i\,F_i(E_u)\,S_{e,i}(E), \tag{10}
 $$
 
-where $S_{e,i}$ is the stopping in element $i$ from Sections 2.1 to 2.3 and $F_i$ the factor of Eq. (9) for that element. Bragg's rule neglects the effect of chemical bonds on the target electrons. The compound correction $C$ accounts for it on average. SRIM's compound dictionary (356 entries, `Compound.dat`) provides values of $C$ for many materials. In the list mode of the SR module (stopping powers at given energies) and in `lunasrim.stopping.compound_stopping`, `SRModule.exe` applies $C$ a second time: the sum of Eq. (10) is multiplied by Eq. (9) with $F_0 = C$ and $c = 7$ when $E < 10$ MeV. We reproduce this. The table mode of the SR module and TRIM apply $C$ once, through $F_i$.
+where $S_{e,i}$ is the stopping in element $i$ from Sections 2.1 to 2.3 and $F_i$ the factor of Eq. (9) for that element. Bragg's rule neglects the effect of chemical bonds on the target electrons. The compound correction $C$ accounts for it on average. It is given by the user and is 1 by default. SRIM's compound dictionary (356 entries, `Compound.dat`) lists the densities, the stoichiometries and the chemical bonds of its materials; lunasrim reads the densities and stoichiometries but does not derive $C$ from the bonds. In the list mode of the SR module (stopping powers at given energies), `SRModule.exe` applies $C$ a second time: the sum of Eq. (10) is multiplied by Eq. (9) with $F_0 = C$ and $c = 7$ when $E < 10$ MeV. We reproduce this in `lunasrim.sr.StoppingList`, and `lunasrim.stopping.compound_stopping` does the same. The table mode of the SR module, TRIM and the energy-loss calculation of Section 6 apply $C$ once, through $F_i$.
 
 Implementation: `lunasrim/stopping.py`, functions `electronic_stopping_element` (Eqs. 3 to 8), `fade_correction` and `phase_factor` (Eq. 9), `electronic_stopping` and `compound_stopping` (Eq. 10).
 
@@ -139,14 +139,14 @@ The SR module tabulates electronic and nuclear stopping, the projected range and
 
 The energy grid has 26 points per decade with the mantissas 1.0, 1.1, ..., 1.8, 2.0, 2.25, 2.5, 2.75, 3.0, 3.25, 3.5, 3.75, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0, 8.0 and 9.0, starting at 1 eV and ending at the first grid point above $E_\mathrm{max}$. The electronic stopping is evaluated on this grid with Eq. (10) and interpolated linearly in between.
 
-The ranges are obtained with a PRAL-type integration of the first moments of the ion distribution, after Biersack, as in `SRModule.exe`. For each target element $k$ we define $A_k = M_{2,k}/M_1$, $\gamma_k = 4A_k/(1+A_k)^2$, the nuclear stopping $S_{n,k}(E)$ of Eq. (13) in the universal form, and a second nuclear moment
+The ranges are obtained with a PRAL-type integration of the first moments of the ion distribution, after Biersack, as in `SRModule.exe`. For each target element $k$ we define $A_k = M_{2,k}/M_1$, $\gamma_k = 4A_k/(1+A_k)^2$, the nuclear stopping power $S_{n,k}(E) = (\pi a_k^2 \gamma_k N/\varepsilon_{f,k})\,s_n(\varepsilon)$ with the universal form of Eq. (12), and a second nuclear moment
 
 $$
 S_{t,k}(E) = \frac{\pi a_k^2\,\gamma_k^2\,N}{\varepsilon_{f,k}^2}\;
 \frac{1}{4 + 6.684\,\varepsilon^{-1.0494} + 0.197\,\varepsilon^{-1.6991}}, \tag{14}
 $$
 
-where $a_k$ is the screening length of Eq. (2), $\varepsilon_{f,k} = a_k A_k / [(1+A_k) Z_1 Z_{2,k} e^2]$ is the reduced energy per eV and $\varepsilon = \varepsilon_{f,k} E$. $S_{t,k}$ has the dimension of a mean square energy transfer per unit path length (eV²/Å). With the total stopping $S = S_e + S_n$ in eV/Å and the weighted sums $\nu = \sum_k f_k A_k S_{n,k}$, $\tau = \sum_k f_k A_k S_{t,k}$ and $\mu = \sum_k f_k (1 - A_k)^2 S_{t,k}$, each energy step $\Delta E$ updates the projected range $R_p$, the mean square total range $\langle R^2 \rangle$ and the mean square radial displacement $\Lambda$ as
+where $a_k$ is the screening length of Eq. (2), $\varepsilon_{f,k} = a_k A_k / [(1+A_k) Z_1 Z_{2,k} e^2]$ is the reduced energy per eV with $e^2 = 14.4$ eV Å, $\varepsilon = \varepsilon_{f,k} E$ and $N$ is the atomic density with the constant 0.6023. $S_{t,k}$ has the dimension of a mean square energy transfer per unit path length (eV²/Å). The prefactor of $S_{n,k}$ equals $4\pi a_k Z_1 Z_{2,k} e^2 M_1 N/(M_1 + M_{2,k})$, and per atom it is 0.2 % larger than the prefactor of Eq. (13) ($4\pi \times 0.4685 \times 14.4 = 84.78$ eV Å² against 84.62 eV Å²). With the total stopping $S = S_e + S_n$ in eV/Å and the weighted sums $\nu = \sum_k f_k A_k S_{n,k}$, $\tau = \sum_k f_k A_k S_{t,k}$ and $\mu = \sum_k f_k (1 - A_k)^2 S_{t,k}$, each energy step $\Delta E$ updates the projected range $R_p$, the mean square total range $\langle R^2 \rangle$ and the mean square radial displacement $\Lambda$ as
 
 $$
 \Delta R_p = \frac{\Delta E}{E}\,\frac{4E^2 - (2E\nu + \tau)\,R_p}{4ES - 2\tau}, \qquad
@@ -154,7 +154,7 @@ $$
 \Delta\Lambda = \frac{\Delta E}{E}\,\frac{\left(\langle R^2\rangle - 2\Lambda\right)(4E\nu - \mu) - 8E\tau R_p/S}{4ES - 8\tau}, \tag{15}
 $$
 
-where all quantities are evaluated at the end of the step. When $1 - 2\tau/(ES) < 0.01$ the last expression is replaced by $\Lambda = \langle R^2\rangle/2 - E^2 R_p/(2E\nu - \mu/2)$. Without nuclear stopping, $\nu = \tau = \mu = 0$ and Eq. (15) reduces to $dR_p/dE = 1/S$. The tabulated longitudinal straggling is $(\langle R^2\rangle - \Lambda - R_p^2)^{1/2}$ and the lateral straggling is $(\Lambda/2)^{1/2}$, the spread along one transverse axis. The integration starts at 1.1 eV from a low-energy solution in which $R_p$, $\langle R^2\rangle$ and $\Lambda$ are fixed by the ratio of nuclear and electronic stopping, and it divides every grid interval into 50 equal steps. The energy is accumulated step by step, so that the printed energies carry the rounding of 50 additions (for example `999.999 eV`). A row is written at the end of each grid interval above $E_\mathrm{min} - 0.2$ eV. A negative variance stops `SRModule.exe` with a run-time error; lunasrim raises `SrError` in that case.
+where $E$, $S$, $\nu$, $\tau$ and $\mu$ are evaluated at the end of the step and $R_p$, $\langle R^2\rangle$ and $\Lambda$ on the right-hand sides take their latest values, updated in the order of Eq. (15). When $1 - 2\tau/(ES) < 0.01$ the last expression is replaced by $\Lambda = \langle R^2\rangle/2 - E^2 R_p/(2E\nu - \mu/2)$. Without nuclear stopping, $\nu = \tau = \mu = 0$ and Eq. (15) reduces to $dR_p/dE = 1/S$. The tabulated longitudinal straggling is $(\langle R^2\rangle - \Lambda - R_p^2)^{1/2}$ and the lateral straggling is $(\Lambda/2)^{1/2}$, the spread along one transverse axis. The integration starts at 1.1 eV from a low-energy solution in which $R_p$, $\langle R^2\rangle$ and $\Lambda$ are fixed by the ratio of nuclear and electronic stopping, and it divides every grid interval into 50 equal steps. The energy is accumulated step by step, so that the printed energies carry the rounding of 50 additions (for example `999.999 eV`). A row is written at the end of each grid interval above $E_\mathrm{min} - 0.2$ eV. A negative longitudinal variance is printed as zero, and so is a negative lateral variance in the same row. A negative lateral variance with a non-negative longitudinal one stops `SRModule.exe` with a run-time error; lunasrim raises `SrError` in that case.
 
 Eq. (15) treats the ion distribution through its first two moments in a target of uniform composition. It does not describe the shape of the distribution beyond its width, and it neglects the energy straggling of the ion along its path. For a comparison with TRIM see Section 7.
 
@@ -242,7 +242,7 @@ w_\mathrm{B} = 177\,Z_1\left(\bar Z_2 N\right)^{1/2}, \qquad
 k = \left[\frac{3.2 \times 12\,N\,(Z_1 + \bar Z_2)^{8/3}}{1000\,M_1}\right]^{1/2}, \tag{23}
 $$
 
-where $E$ is in eV, $N$ in atoms/Å³, $w$ in eV/Å$^{1/2}$, $\bar Z_2$ is the integer mean atomic number of the layer and $\beta^2 = 1 - [1 + E/(931.494\,M_1\ \mathrm{MeV})]^{-2}$. The variance per unit length, $w_\mathrm{B}^2/12 = 2610.75\,Z_1^2 \bar Z_2 N$ eV²/Å, is Bohr's straggling $4\pi e^4 Z_1^2 Z_2 N$ [4] (2605.63 $Z_1^2 Z_2 N$ eV²/Å with $e^2 = 14.39964$ eV Å) to 0.2 %. The low-energy branch $kE$ acts only at low energy: in silicon it applies below 92 eV for protons and below 3.8 keV for argon ions. Recoils use the same expression with their own $Z_1$, $M_1$ and stopping table. The ion stops when its energy falls to 1 eV.
+where $E$ is in eV, $N$ in atoms/Å³, $w$ in eV/Å$^{1/2}$, $\bar Z_2$ is the integer mean atomic number of the layer and $\beta^2 = 1 - [1 + E/(931.494\,M_1\ \mathrm{MeV})]^{-2}$. The variance per unit length, $w_\mathrm{B}^2/12 = 2610.75\,Z_1^2 \bar Z_2 N$ eV²/Å, is Bohr's straggling $4\pi e^4 Z_1^2 Z_2 N$ [4] (2605.63 $Z_1^2 Z_2 N$ eV²/Å with $e^2 = 14.39964$ eV Å) to 0.2 %. The low-energy branch $kE$ acts only at low energy: in silicon it applies below 92 eV for protons and below 3.8 keV for argon ions. Recoils use Eqs. (22) and (23) with their own stopping table and their own mass in $\beta^2$, but with the $w_\mathrm{B}$ and $k$ of the ion, which TRIM computes once per layer from the ion's $Z_1$ and $M_1$. lunasrim reproduces this. The ion stops when its energy falls to 1 eV.
 
 ### 5.5 Recoils and damage
 
@@ -271,7 +271,7 @@ Types 1 and 2 nevertheless give different ion trajectories, because their flight
 
 A recoil that reaches the surface ($x < 0$) escapes if the energy of its motion normal to the surface exceeds the surface binding energy $E_s$, that is if $E\cos^2\alpha \ge E_s$, where $\alpha$ is the angle to the surface normal. Otherwise it is reflected back into the target. This is a planar surface barrier. The sputtering yield is the number of escaping atoms per ion. A recoil that leaves the back of the target is not followed further. An ion that leaves the front surface is backscattered and one that leaves the back is transmitted; their energies, positions and directions are written to `BACKSCAT.txt` and `TRANSMIT.txt`.
 
-Missing displacement, lattice and surface energies of a TRIM.IN file take TRIM's defaults: 20 eV displacement energy for the first element; the others take its displacement energy, 2 eV lattice binding and 4 eV surface binding energy. The pysrim-compatible `Layer` class uses 25 eV, 3 eV and the heat of sublimation of `SCOEF03.DAT`.
+Missing displacement, lattice and surface energies of a TRIM.IN file take TRIM's defaults: 20 eV displacement energy for the first element; the others take its displacement energy, 2 eV lattice binding and 4 eV surface binding energy. The pysrim-compatible `Layer` class uses 25 eV, 3 eV and the heat of sublimation of SRIM's `ATOMDATA` file. `lunasrim.trim` and the web application use the displacement energies of the TRIM user interface (10 eV for H, 28 eV for C, N and O, 15 eV for Si and 25 eV otherwise), 3 eV and the heat of sublimation.
 
 Implementation: `lunasrim/trim.py`, `TrimEngine.eloss` (Eqs. 22, 23), `TrimEngine.recoil`, `on_kinchin_pease` (Eqs. 24, 25), `full_cascade`, `on_recoil_stop` and `replacement` (replacement collisions) and `on_recoil_surface` (sputtering).
 
@@ -289,7 +289,7 @@ $$
 \frac{dE}{dx} = -S(E), \qquad \frac{d\Omega^2}{dx} = W(E) - 2\,S'(E)\,\Omega^2, \tag{26}
 $$
 
-where $S = S_e + S_n$ is the total stopping power of the SR module in list mode (Eqs. 10 and 13, with the pair coefficients of `SNUC03.dat` and the compound correction), $S' = dS/dE$ and $W$ is the variance of the electronic energy loss per unit path length. The second term of the variance equation describes how the slope of the stopping power changes an existing spread: where $S$ increases with decreasing energy ($S' < 0$) the slower ions lose more energy and the spread grows, and where $S' > 0$ it narrows.
+where $S = S_e + S_n$ is the total stopping power of Eqs. (10) and (13), with the pair coefficients of `SNUC03.dat` and the compound correction applied once through $F_i$ (as in the table mode of the SR module and in TRIM, not twice as in the list mode of Section 2.5), $S' = dS/dE$ and $W$ is the variance of the electronic energy loss per unit path length. The second term of the variance equation describes how the slope of the stopping power changes an existing spread: where $S$ increases with decreasing energy ($S' < 0$) the slower ions lose more energy and the spread grows, and where $S' > 0$ it narrows.
 
 We give $\Omega$ for two models of $W$. The default is TRIM's model of Eq. (23),
 
@@ -305,7 +305,7 @@ $$
 
 with the exact stoichiometric mean $Z_2 = \sum_i f_i Z_{2,i}$ and $e^2 = 14.39964$ eV Å. The two differ by the 0.2 % of Section 5.4, the relativistic factor, and the rounding of $\bar Z_2$ in compounds.
 
-We tabulate $S_e$ and $S_n$ at 200 energies per decade between $\max(10^{-3}E_0, 1\ \mathrm{eV})$ and $1.02\,E_0$ and interpolate them linearly in $\ln S$ versus $\ln E$. The derivative $S'$ is a central difference over $\pm0.1$ % in energy. Eq. (26) is integrated with a fourth-order Runge-Kutta method in 500 equal steps. If the mean energy falls below 1 % of the initial energy, the integration stops and the result is flagged as stopped. The electronic and nuclear energy losses are separated with the ratio $S_e/S_n$ at the middle of each step. The FWHM is $2(2\ln 2)^{1/2}\,\Omega = 2.3548\,\Omega$. For a layer tilted by an angle $\phi$ to the beam, the path length is the thickness divided by $\cos\phi$.
+We tabulate $S_e$ and $S_n$ at 200 energies per decade between $\max(10^{-3}E_0, 1\ \mathrm{eV})$ and $1.02\,E_0$ and interpolate them linearly in $\ln S$ versus $\ln E$. The derivative $S'$ is a central difference over $\pm0.1$ % in energy. Eq. (26) is integrated with a fourth-order Runge-Kutta method in 500 equal steps. If the mean energy falls below 1 % of the initial energy, the integration stops and the result is flagged as stopped. The electronic and nuclear energy losses are separated with the ratio $S_e/S_n$ at the middle of each step. The FWHM is $2(2\ln 2)^{1/2}\,\Omega = 2.3548\,\Omega$. For a beam at an angle $\phi$ to the layer normal, the path length is the thickness divided by $\cos\phi$.
 
 Eq. (26) neglects three effects that a TRIM calculation includes or that real beams show.
 
@@ -313,17 +313,17 @@ Eq. (26) neglects three effects that a TRIM calculation includes or that real be
 - Path-length straggling. Angular scattering makes the paths of individual ions longer than the layer thickness by different amounts. This adds to the spread for thick layers and heavy targets.
 - Charge-state fluctuations and target-electron binding. $W$ contains no charge-exchange term, and Bohr's formula treats the target electrons as free, which overestimates the straggling at low velocity. TRIM makes the same approximation.
 
-We compare the analytic $\Omega$ with the spread of lunasrim's TRIM for five ion-layer pairs. Both calculations use the defaults of `lunasrim.material` and `lunasrim.resolve_ion`: the ion masses 1.008 u (H), 4.003 u (He) and 12.000 u (C), and the densities 2.3212 g/cm³ (Si), 2.253 g/cm³ (C), 19.311 g/cm³ (Au), 0.001251 g/cm³ (N₂ gas) and 8.8955 g/cm³ (Ni). The TRIM runs are `lunasrim.trim(..., ions=4000, seed=7, calculation=1)`. The TRIM width is half the interval between the 16 % and 84 % quantiles of the energies of the transmitted ions, which excludes the nuclear tail.
+We compare the analytic $\Omega$ with the spread of lunasrim's TRIM for five ion-layer pairs. Both calculations use the defaults of `lunasrim.material` and `lunasrim.resolve_ion`: the ion masses 1.008 u (H), 4.003 u (He) and 12.000 u (C), and the densities 2.3212 g/cm³ (Si), 2.253 g/cm³ (C), 19.311 g/cm³ (Au), 0.001251 g/cm³ (N₂ gas) and 8.8955 g/cm³ (Ni). The TRIM runs are `lunasrim.trim(..., ions=4000, seed=7, calculation=1)`. The TRIM width is half the interval between the 15.87 % and 84.13 % quantiles of the energies of the transmitted ions (linear interpolation between order statistics), which equals the standard deviation for a normal distribution and excludes the nuclear tail.
 
 | Ion, energy | Layer | Exit energy, analytic / TRIM median (keV) | $\Omega$, analytic / TRIM (keV) |
 |---|---|---|---|
 | H, 400 keV | Si, 1 µm | 330.5 / 331.6 | 4.48 / 4.55 |
 | H, 100 keV | C, 300 nm | 50.1 / 50.1 | 2.22 / 2.38 |
-| He, 2 MeV | Au, 300 nm | 1799.8 / 1799.8 | 12.27 / 12.62 |
+| He, 2 MeV | Au, 300 nm | 1799.8 / 1799.8 | 12.27 / 12.61 |
 | He, 300 keV | N₂ gas, 200 µm | 258.5 / 258.2 | 2.72 / 2.91 |
-| C, 5 MeV | Ni, 500 nm | 3486.2 / 3485.1 | 33.58 / 34.95 |
+| C, 5 MeV | Ni, 500 nm | 3486.2 / 3485.1 | 33.58 / 34.93 |
 
-The exit energies agree within 1.1 keV. The TRIM widths are larger by 1.6 %, 7.0 %, 2.8 %, 6.9 % and 4.1 %. For a normal distribution the standard error of this quantile estimate of the width is 1.5 % for 4000 ions, so the difference exceeds the statistical uncertainty in four of the five cases. This is consistent with the path-length and nuclear contributions that Eq. (26) omits.
+The exit energies agree within 1.1 keV. The TRIM widths are larger by 1.5 %, 7.0 %, 2.8 %, 6.8 % and 4.0 %. For a normal distribution the standard error of this quantile estimate of the width is 1.5 % for 4000 ions, so the difference exceeds the statistical uncertainty in four of the five cases. This is consistent with the path-length and nuclear contributions that Eq. (26) omits.
 
 The integer mean $\bar Z_2$ of TRIM's model matters for compounds of light elements. For 2 MeV He through 2 µm of Mylar at 45° (`lunasrim.material('Mylar')`, 1.397 g/cm³), the stepwise rounding gives $\bar Z_2 = 4$ instead of the stoichiometric mean 4.55, and the TRIM-model width is 11.71 keV against 12.47 keV with Bohr's formula.
 

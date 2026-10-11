@@ -1,7 +1,7 @@
 """Energy loss and energy straggling of an ion beam crossing a layer.
 
 The mean energy follows the SRIM stopping power (electronic + nuclear,
-SRModule.exe's ``S(E)`` with the compound correction):
+as in SRModule.exe's tables, with the compound correction applied once):
 
     dE/dx = -S(E)
 
