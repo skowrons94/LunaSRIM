@@ -467,8 +467,12 @@ function initTabs() {
     if (b.dataset.pane === 'tr-traj-pane') Trim.draw();
   })));
   // #view, or #physics/section for a section of the Physics page
-  const [hv, hs] = location.hash.slice(1).split('/');
-  if (hv && $('#view-' + hv)) showView(hv, hs && decodeURIComponent(hs));
+  const route = () => {
+    const [hv, hs] = location.hash.slice(1).split('/');
+    if (hv && $('#view-' + hv)) showView(hv, hs && decodeURIComponent(hs));
+  };
+  route();
+  window.addEventListener('hashchange', route);   // links typed or pasted, back/forward
 }
 function showView(v, sub) {
   $$('.tab').forEach(t => {
@@ -1141,11 +1145,11 @@ const Physics = {
   },
 
   async open(section) {
-    if (section) this.pending = section;
-    if (this.done) { this.scroll(); return; }
+    this.pending = section || '';
+    if (this.done) { this.show(this.pending); return; }
     if (this.busy) return;
     this.busy = true;
-    const box = $('#physics-doc');
+    const box = $('#physics-body');
     try {
       const [md] = await Promise.all([
         fetch('physics.md', { cache: 'no-cache' }).then(r => {
@@ -1156,7 +1160,7 @@ const Physics = {
       ]);
       this.render(md, box);
       this.done = true;
-      requestAnimationFrame(() => this.scroll());
+      this.show(this.pending, true);
     } catch (e) {
       box.replaceChildren(h('div', { class: 'empty' }, 'The physics documentation could not be loaded (' + e.message + '). ',
         h('a', { href: this.repo + 'docs/physics.md', target: '_blank', rel: 'noopener' }, 'Read it on GitHub'), '.'));
@@ -1165,10 +1169,36 @@ const Physics = {
     }
   },
 
-  scroll() {
-    const el = this.pending && document.getElementById('doc-' + this.pending);
-    this.pending = null;
-    if (el) el.scrollIntoView();
+  // show the chapter (or the chapter holding a section) with the id `id`;
+  // '' is the overview
+  show(id, first) {
+    id = id || '';
+    let ch = this.chapters.find(c => c.id === id), target = null;
+    if (!ch) {
+      target = document.getElementById('doc-' + id);
+      ch = (target && this.chapters.find(c => c.el.contains(target))) || this.chapters[0];
+    }
+    for (const c of this.chapters) c.el.hidden = c !== ch;
+    $$('#physics-nav li.ch').forEach(li => li.classList.toggle('active', li.dataset.ch === ch.id));
+    const sel = $('#physics-body .doc-select');
+    if (sel) sel.value = target ? id : ch.id;
+    const view = $('#view-physics');
+    if (!view.classList.contains('active')) return;
+    const top = (el) => {
+      const bar = $('.topbar');
+      const off = (bar && getComputedStyle(bar).position === 'sticky' ? bar.offsetHeight : 0) + 10;
+      window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - off, behavior: 'auto' });
+    };
+    if (target) {
+      requestAnimationFrame(() => top(target));
+      // the formula fonts may arrive later and move the text
+      if (first && document.fonts) document.fonts.ready.then(() => top(target));
+    }
+    else if (!first || id) top($('#physics-doc'));
+  },
+  go(id) {
+    history.replaceState(null, '', '#physics' + (id ? '/' + id : ''));
+    this.show(id);
   },
 
   // formulas are taken out of the text before the Markdown parser (which would
@@ -1220,12 +1250,13 @@ const Physics = {
       const out = window.katex.renderToString(tex, { displayMode: display, throwOnError: false, strict: 'ignore' });
       return display ? '<span class="math-display">' + out + '</span>' : out;
     });
-    box.innerHTML = html;
+    const doc = h('div');
+    doc.innerHTML = html;
 
     // tables scroll inside a wrapper
-    $$('table', box).forEach(t => { const w = h('div', { class: 'table-scroll' }); t.replaceWith(w); w.append(t); });
+    $$('table', doc).forEach(t => { const w = h('div', { class: 'table-scroll' }); t.replaceWith(w); w.append(t); });
     // links: sections of this page, other files of the repository on GitHub
-    for (const a of $$('a[href]', box)) {
+    for (const a of $$('a[href]', doc)) {
       const href = a.getAttribute('href');
       if (a.classList.contains('anchor')) continue;
       if (href.startsWith('#')) { a.setAttribute('href', '#physics/' + href.slice(1)); continue; }
@@ -1237,41 +1268,66 @@ const Physics = {
       a.target = '_blank'; a.rel = 'noopener';
     }
     // images: docs/img/ is copied next to the static site; otherwise from GitHub
-    for (const img of $$('img', box)) {
+    for (const img of $$('img', doc)) {
       const src = img.getAttribute('src') || '';
       img.loading = 'lazy';
       if (/^[a-z][a-z0-9+.-]*:|^\/\//i.test(src)) continue;
       const path = new URL(src, 'https://repo/docs/').pathname;
       img.src = LS && path.startsWith('/docs/img/') ? 'img/' + path.slice(10) : this.raw + path.slice(1);
     }
-    box.addEventListener('click', ev => {
+    this.split(doc, box);
+    $('#physics-doc').addEventListener('click', ev => {
       const a = ev.target.closest('a[href^="#physics"]');
       if (!a || ev.ctrlKey || ev.metaKey || ev.shiftKey) return;
       ev.preventDefault();
-      const id = a.getAttribute('href').split('/')[1];
-      history.replaceState(null, '', a.getAttribute('href'));
-      if (id) { this.pending = decodeURIComponent(id); this.scroll(); } else window.scrollTo(0, 0);
+      this.go(decodeURIComponent(a.getAttribute('href').split('/')[1] || ''));
     });
-    this.toc(box);
   },
 
-  // compact table of contents (h2, h3) after the title
-  toc(box) {
-    const hs = $$('h2, h3', box);
-    if (hs.length < 3 || hs.some(x => /^(table of )?contents$/i.test(x.textContent.replace(/#$/, '').trim()))) return;
-    const top = h('ol');
-    let sub = null;
-    for (const x of hs) {
-      const c = x.cloneNode(true);
-      c.querySelectorAll('.anchor, .katex-mathml').forEach(e => e.remove());
-      const li = h('li', null, h('a', { href: x.querySelector('.anchor').getAttribute('href'), html: c.innerHTML }));
-      if (x.tagName === 'H2' || !top.lastChild) { top.append(li); sub = null; }
-      else { if (!sub) top.lastChild.append(sub = h('ol')); sub.append(li); }
+  // one chapter per ## heading; the text before the first one is the overview
+  chapters: [],
+  split(doc, box) {
+    const text = (el) => { const c = el.cloneNode(true); c.querySelectorAll('.anchor, .katex-mathml').forEach(e => e.remove()); return c; };
+    const chapters = [{ id: '', title: 'Overview', head: null, nodes: [] }];
+    for (const n of Array.from(doc.childNodes)) {
+      if (n.nodeName === 'H2') chapters.push({ id: n.id.replace(/^doc-/, ''), title: text(n).textContent.trim(), head: n, nodes: [] });
+      chapters[chapters.length - 1].nodes.push(n);
     }
-    const nav = h('details', { class: 'toc', open: !window.matchMedia('(max-width: 640px)').matches },
-      h('summary', null, 'Contents'), h('nav', null, top));
-    const h1 = box.querySelector('h1');
-    if (h1 && h1 === box.firstElementChild) h1.after(nav); else box.prepend(nav);
+    for (const c of chapters) {
+      c.el = h('section', { class: 'doc-chapter' }, ...c.nodes);
+      c.subs = $$('h3', c.el).map(x => ({ id: x.id.replace(/^doc-/, ''), html: text(x).innerHTML, title: text(x).textContent.trim() }));
+      // the first sentence of the chapter, for the overview
+      const p = $('p', c.el);
+      const s = p ? p.textContent.trim().replace(/\s+/g, ' ') : '';
+      const m = /^(.{40,}?[.:])\s/.exec(s + ' ');
+      c.summary = (m ? m[1] : s).replace(/[,;]$/, ' …');
+    }
+    const link = (id) => '#physics' + (id ? '/' + id : '');
+    // overview: cards of the chapters
+    const ov = chapters[0];
+    ov.el.append(h('div', { class: 'doc-cards' }, ...chapters.slice(1).map(c => h('a', { class: 'doc-card', href: link(c.id) },
+      h('span', { class: 't', html: text(c.head).innerHTML }),
+      c.summary ? h('span', { class: 's' }, c.summary.length > 190 ? c.summary.slice(0, 187).replace(/\s\S*$/, '') + ' …' : c.summary) : null,
+      c.subs.length ? h('span', { class: 'n' }, c.subs.map(x => x.title.replace(/^\d+(\.\d+)*\s*/, '')).join(' · ')) : null))));
+    // previous / next at the end of every chapter
+    chapters.forEach((c, i) => {
+      const prev = chapters[i - 1], next = chapters[i + 1];
+      c.el.append(h('nav', { class: 'doc-pager' },
+        prev ? h('a', { class: 'prev', href: link(prev.id) }, h('small', null, 'Previous'), prev.title) : h('span'),
+        next ? h('a', { class: 'next', href: link(next.id) }, h('small', null, 'Next'), next.title) : h('span')));
+    });
+    // phones: a chapter selector above the text; desktop: the side bar
+    const sel = h('select', { class: 'doc-select', 'aria-label': 'Chapter' });
+    for (const c of chapters) {
+      sel.append(h('option', { value: c.id }, c.title));
+      for (const x of c.subs) sel.append(h('option', { value: x.id }, '\u2003' + x.title));
+    }
+    sel.addEventListener('change', () => this.go(sel.value));
+    box.replaceChildren(h('div', { class: 'doc-select-wrap' }, sel), ...chapters.map(c => c.el));
+    $('#physics-nav').replaceChildren(h('div', { class: 'doc-nav-title' }, 'Physics'), h('ol', null, ...chapters.map(c =>
+      h('li', { class: 'ch', 'data-ch': c.id }, h('a', { href: link(c.id), html: c.head ? text(c.head).innerHTML : c.title }),
+        c.subs.length ? h('ol', null, ...c.subs.map(x => h('li', null, h('a', { href: link(x.id), html: x.html })))) : null))));
+    this.chapters = chapters;
   },
 };
 
