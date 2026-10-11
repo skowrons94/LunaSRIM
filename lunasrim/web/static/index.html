@@ -18,9 +18,9 @@
     </div>
   </div>
   <nav class="tabs" role="tablist">
-    <button class="tab active" data-view="stopping">Stopping &amp; Range</button>
-    <button class="tab" data-view="implant">Implantation</button>
-    <button class="tab" data-view="trim">TRIM Monte Carlo</button>
+    <button class="tab active" data-view="stopping"><span class="tl">Stopping &amp; Range</span><span class="ts">Stopping</span></button>
+    <button class="tab" data-view="implant"><span class="tl">Implantation</span><span class="ts">Implant</span></button>
+    <button class="tab" data-view="trim"><span class="tl">TRIM Monte Carlo</span><span class="ts">TRIM</span></button>
     <button class="tab" data-view="compare">Compare</button>
     <button class="tab" data-view="about">About</button>
   </nav>
@@ -214,7 +214,7 @@ python -m lunasrim.web            # this web application</pre>
 <!-- periodic table dialog -->
 <dialog id="pt-dialog">
   <div class="pt-head"><h3 id="pt-title">Select an element</h3><input id="pt-search" placeholder="Search name or symbol…"><button class="icon-btn" id="pt-close" aria-label="Close">✕</button></div>
-  <div id="pt-grid" class="pt-grid"></div>
+  <div class="pt-scroll"><div id="pt-grid" class="pt-grid"></div></div>
   <div class="pt-foot muted">SRIM supports elements H (Z=1) to U (Z=92).</div>
 </dialog>
 <div id="toast" class="toast hidden"></div>

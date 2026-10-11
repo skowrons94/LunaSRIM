@@ -98,26 +98,123 @@ function lenUnit(maxA, pref) {
 }
 
 // ------------------------------------------------------------------ plots
-const PALETTE = ['#2f5bd3', '#e4572e', '#29a36a', '#f2a541', '#8e5bd3', '#14a5b8', '#d14d8a', '#6b7a8f', '#a3c13b', '#b5651d'];
+// Plots in the style of a journal figure: closed frame, ticks inside (minor
+// ticks too), faint grid, thin lines.  Series colours are a fixed categorical
+// order checked for colour-vision deficiencies (light and dark steps in
+// style.css, --s1..--s8); lines of one plot also differ in dash pattern.
+const C = (i) => cssVar('--s' + (i % 8 + 1));
+const DASHES = ['solid', 'dash', 'dot', 'dashdot', 'longdash', 'longdashdot', '6px,2px,1px,2px', '1px,3px'];
 function cssVar(n) { return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+function rgba(hex, a) {
+  const n = parseInt(hex.replace('#', ''), 16);
+  return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`;
+}
+const isNarrow = () => window.innerWidth < 640;
+const FONT = 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+
 function plot(id, traces, layout = {}, opts = {}) {
   const el = document.getElementById(id);
   if (!window.Plotly) { el.textContent = 'Plotting library not loaded (no network?). Run tools/fetch_web_vendor.sh on the server.'; return; }
-  const text = cssVar('--text'), line = cssVar('--line'), muted = cssVar('--muted');
-  const ax = (a) => Object.assign({ gridcolor: line, linecolor: line, zerolinecolor: line, tickfont: { color: muted }, titlefont: { color: text }, automargin: true, exponentformat: 'power' }, a || {});
+  el._plot = [traces, layout, opts];
+  el.classList.remove('cleared');
+  // a hidden plot is drawn when its tab is shown (resizePlots): drawn now it
+  // would get Plotly's default width and overflow a phone screen
+  if (!el.offsetParent) { el._stale = true; return; }
+  el._stale = false;
+  const narrow = isNarrow();
+  const text = cssVar('--text'), muted = cssVar('--muted'), grid = cssVar('--grid'), panel = cssVar('--panel'), line = cssVar('--line');
+  const fs = narrow ? 11 : 12.5;
+  // decades of positive data on an axis (labels only at powers of ten when wide)
+  const decades = (key) => {
+    let lo = Infinity, hi = 0;
+    for (const t of traces) for (const v of (t[key] || [])) if (v > 0 && isFinite(v)) { lo = Math.min(lo, v); hi = Math.max(hi, v); }
+    return hi > 0 ? Math.log10(hi / lo) : 0;
+  };
+  const ax = (a, key) => {
+    a = Object.assign({}, a || {});
+    const title = typeof a.title === 'string' ? { text: a.title } : (a.title || {});
+    delete a.title;
+    const log = a.type === 'log';
+    const wide = log && (a.range ? a.range[1] - a.range[0] : decades(key)) >= 2;
+    return Object.assign({
+      showline: true, mirror: 'ticks', linecolor: text, linewidth: 1,
+      ticks: 'inside', ticklen: 6, tickwidth: 1, tickcolor: text,
+      minor: { ticks: 'inside', ticklen: 3, tickwidth: 1, tickcolor: text, showgrid: false, dtick: wide ? 'D1' : undefined },
+      showgrid: true, gridcolor: grid, gridwidth: 1, zeroline: false,
+      tickfont: { color: text, size: fs }, automargin: true,
+      exponentformat: 'power', dtick: wide ? 1 : undefined,
+      title: Object.assign({ font: { size: fs + 0.5, color: text }, standoff: 10 }, title),
+    }, a);
+  };
+  // thin lines; dash patterns as a second cue when a plot has several lines
+  let k = 0;
+  const lines = traces.filter(t => (t.mode || '').includes('lines') && !(t.line && t.line.width === 0) && t.showlegend !== false).length;
+  traces = traces.map(t => {
+    t = Object.assign({}, t);
+    if ((t.mode || '').includes('lines')) {
+      t.line = Object.assign({ width: 1.8 }, t.line);
+      if (lines > 1 && t.line.width && t.showlegend !== false && !t.line.dash) t.line.dash = DASHES[k++ % DASHES.length];
+    }
+    return t;
+  });
   const L = Object.assign({
-    paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', font: { color: text, size: 12.5 },
-    margin: { l: 70, r: 20, t: 40, b: 55 }, legend: { orientation: 'h', y: -0.18 }, hovermode: 'x unified',
+    paper_bgcolor: panel, plot_bgcolor: panel, font: { family: FONT, color: text, size: fs },
+    margin: narrow ? { l: 8, r: 10, t: 8, b: 8 } : { l: 12, r: 18, t: 12, b: 12 },
+    legend: { orientation: 'h', x: 0, xanchor: 'left', y: 1.01, yanchor: 'bottom', bgcolor: 'rgba(0,0,0,0)', font: { size: fs }, itemwidth: 40, tracegroupgap: 4 },
+    hovermode: 'x unified',
+    hoverlabel: { bgcolor: panel, bordercolor: line, font: { family: FONT, color: text, size: fs } },
+    dragmode: narrow ? false : 'zoom',
   }, layout);
-  L.xaxis = ax(layout.xaxis); L.yaxis = ax(layout.yaxis);
-  if (layout.yaxis2) L.yaxis2 = ax(layout.yaxis2);
-  if (layout.title && typeof layout.title === 'string') L.title = { text: layout.title, font: { size: 14 } };
-  Plotly.react(el, traces, L, Object.assign({ responsive: true, displaylogo: false, toImageButtonOptions: { format: 'png', scale: 2, filename: id } }, opts));
+  L.xaxis = ax(layout.xaxis, 'x'); L.yaxis = ax(layout.yaxis, 'y');
+  // large or small values on a linear y axis: plot y / 10^n, "(×10^n)" in the title
+  if (L.yaxis.type !== 'log' && !layout.noScale) {
+    let m = 0;
+    for (const t of traces) if (t.y && t.type !== 'histogram2d') for (const v of t.y) if (isFinite(v)) m = Math.max(m, Math.abs(v));
+    const n = m > 0 ? Math.floor(Math.log10(m)) : 0;
+    if (n >= 4 || n <= -3) {
+      const f = Math.pow(10, -n);
+      traces = traces.map(t => (t.y && t.type !== 'histogram2d') ? Object.assign({}, t, { y: t.y.map(v => v * f) }) : t);
+      const tt = L.yaxis.title.text || '';
+      L.yaxis.title = Object.assign({}, L.yaxis.title, { text: `${tt}${tt ? ' ' : ''}(×10<sup>${n}</sup>)` });
+      if (L.yaxis.range) L.yaxis.range = L.yaxis.range.map(v => v * f);
+    }
+  }
+  if (layout.title) {
+    const t = typeof layout.title === 'string' ? layout.title : layout.title.text;
+    L.title = { text: t, x: 0, xref: 'paper', xanchor: 'left', y: 1, yref: 'container', yanchor: 'top', pad: { t: 6 }, font: { size: fs + 1.5, color: text }, automargin: true };
+  }
+  if (L.shapes) L.shapes = L.shapes.map(s => Object.assign({ layer: 'below' }, s));
+  Plotly.react(el, traces, L, Object.assign({
+    responsive: true, displaylogo: false, scrollZoom: false,
+    displayModeBar: narrow ? false : 'hover',
+    modeBarButtonsToRemove: ['select2d', 'lasso2d', 'autoScale2d', 'zoomIn2d', 'zoomOut2d', 'toggleSpikelines', 'hoverClosestCartesian', 'hoverCompareCartesian'],
+    toImageButtonOptions: { format: 'svg', filename: id },
+  }, opts));
+}
+function clearPlot(id, html) {
+  const el = document.getElementById(id);
+  if (window.Plotly) Plotly.purge(el);
+  el._plot = null; el.innerHTML = html; el.classList.add('cleared');
 }
 function resizePlots(root) {
   if (!window.Plotly) return;
-  $$('.plot', root).forEach(p => { if (p.data) Plotly.Plots.resize(p); });
+  // a plot drawn while hidden has no size: lay it out again
+  $$('.plot', root).forEach(p => { if (p._plot && p.offsetParent) plot(p.id, ...p._plot); });
 }
+// phone <-> desktop layout: draw the plots again
+let _narrow = null;
+window.addEventListener('resize', () => {
+  const n = isNarrow();
+  if (_narrow !== null && n !== _narrow) $$('.plot').forEach(p => { if (p._plot) plot(p.id, ...p._plot); });
+  _narrow = n;
+});
+// histogram of a list of values as a step line (bin centres)
+function histogram(values, lo, hi, n) {
+  const w = (hi - lo) / n || 1, c = new Array(n).fill(0);
+  for (const v of values) { const i = Math.min(n - 1, Math.max(0, Math.floor((v - lo) / w))); c[i]++; }
+  return { x: c.map((_, i) => lo + (i + 0.5) * w), y: c };
+}
+const stepTrace = (x, y, name, color, extra) => Object.assign({ x, y, name, mode: 'lines', line: { shape: 'hvh', color, width: 1.5 }, fill: 'tozeroy', fillcolor: rgba(color, 0.12) }, extra || {});
 
 // ----------------------------------------------------- periodic table
 const POS = {};        // Z -> [row, col]
@@ -425,14 +522,14 @@ const SR = {
     const d = this.data, rows = d.rows, E = rows.map(r => r.energy * 1000);
     const u = d.units;
     plot('plot-sr-stop', [
-      { x: E, y: rows.map(r => r.se), name: 'Electronic', mode: 'lines', line: { color: PALETTE[0], width: 2.4 } },
-      { x: E, y: rows.map(r => r.sn), name: 'Nuclear', mode: 'lines', line: { color: PALETTE[1], width: 2.4 } },
-      { x: E, y: rows.map(r => r.se + r.sn), name: 'Total', mode: 'lines', line: { color: PALETTE[2], width: 2, dash: 'dot' } },
-    ], { title: `Stopping of ${this.title}`, xaxis: { type: 'log', title: 'Ion energy (eV)' }, yaxis: { type: 'log', title: `Stopping (${u})` } });
+      { x: E, y: rows.map(r => r.se + r.sn), name: 'Total', mode: 'lines', line: { color: C(2), dash: 'dot', width: 2.2 }, legendrank: 3 },
+      { x: E, y: rows.map(r => r.se), name: 'Electronic', mode: 'lines', line: { color: C(0), dash: 'solid' }, legendrank: 1 },
+      { x: E, y: rows.map(r => r.sn), name: 'Nuclear', mode: 'lines', line: { color: C(1), dash: 'dash' }, legendrank: 2 },
+    ], { title: `Stopping of ${this.title}`, xaxis: { type: 'log', title: 'Ion energy (eV)' }, yaxis: { type: 'log', title: `Stopping power (${u})` } });
     plot('plot-sr-range', [
-      { x: E, y: rows.map(r => r.range * 1e-4), name: 'Projected range', mode: 'lines', line: { color: PALETTE[0], width: 2.4 } },
-      { x: E, y: rows.map(r => r.long * 1e-4), name: 'Longitudinal straggling', mode: 'lines', line: { color: PALETTE[1], width: 2.2 } },
-      { x: E, y: rows.map(r => r.lat * 1e-4), name: 'Lateral straggling', mode: 'lines', line: { color: PALETTE[2], width: 2.2 } },
+      { x: E, y: rows.map(r => r.range * 1e-4), name: 'Projected range', mode: 'lines', line: { color: C(0) } },
+      { x: E, y: rows.map(r => r.long * 1e-4), name: 'Longitudinal straggling', mode: 'lines', line: { color: C(1) } },
+      { x: E, y: rows.map(r => r.lat * 1e-4), name: 'Lateral straggling', mode: 'lines', line: { color: C(2) } },
     ], { title: `Range of ${this.title}`, xaxis: { type: 'log', title: 'Ion energy (eV)' }, yaxis: { type: 'log', title: 'Distance (µm)' } });
     const t = $('#sr-tab');
     t.innerHTML = '';
@@ -527,19 +624,19 @@ const IM = {
     const x = d.depth.map(v => v / ls);
     const log = $('#im-log').checked;
     const traces = [];
-    if (d.profiles.length > 1) d.profiles.forEach((p, i) => traces.push({ x, y: p, name: fmtE(d.results[i].energy), mode: 'lines', line: { width: 1.3, color: PALETTE[(i + 1) % PALETTE.length] }, opacity: .8 }));
-    traces.push({ x, y: d.total, name: d.profiles.length > 1 ? 'Total' : fmtE(d.results[0].energy), mode: 'lines', line: { width: 3, color: PALETTE[0] }, fill: d.profiles.length > 1 ? null : 'tozeroy' });
+    if (d.profiles.length > 1) d.profiles.forEach((p, i) => traces.push({ x, y: p, name: fmtE(d.results[i].energy), mode: 'lines', line: { width: 1.2, color: C(i + 1) } }));
+    traces.push({ x, y: d.total, name: d.profiles.length > 1 ? 'Total' : fmtE(d.results[0].energy), mode: 'lines', line: { width: 2, color: C(0), dash: 'solid' }, fill: d.profiles.length > 1 ? null : 'tozeroy', fillcolor: rgba(C(0), 0.12) });
     const ymax = Math.max(...d.total);
     plot('plot-im-profile', traces, { title: `Implanted ${this.title}`, xaxis: { title: `Depth (${lu})` }, yaxis: { type: log ? 'log' : 'linear', title: 'Concentration (atoms/cm³)', range: log ? [Math.log10(ymax) - 4, Math.log10(ymax) + 0.3] : undefined } });
     const rows = this.curve.rows;
     const E = rows.map(r => r.energy);
     const [cu, cs] = lenUnit(Math.max(...rows.map(r => r.range)));
     plot('plot-im-curve', [
-      { x: E, y: rows.map(r => r.range / cs), name: 'Projected range Rp', mode: 'lines', line: { color: PALETTE[0], width: 2.5 } },
-      { x: E.concat(E.slice().reverse()), y: rows.map(r => (r.range + r.long) / cs).concat(rows.map(r => Math.max(r.range - r.long, 0) / cs).reverse()), name: 'Rp ± ΔRp', fill: 'toself', mode: 'lines', line: { width: 0 }, fillcolor: 'rgba(47,91,211,.15)', hoverinfo: 'skip' },
-      { x: E, y: rows.map(r => r.long / cs), name: 'Longitudinal straggling ΔRp', mode: 'lines', line: { color: PALETTE[1], width: 2 } },
-      { x: E, y: rows.map(r => r.lat / cs), name: 'Lateral straggling', mode: 'lines', line: { color: PALETTE[2], width: 2 } },
-      { x: d.results.map(r => r.energy), y: d.results.map(r => r.range / cs), name: 'Implant energies', mode: 'markers', marker: { size: 9, color: PALETTE[3] } },
+      { x: E, y: rows.map(r => r.range / cs), name: 'Projected range R<sub>p</sub>', mode: 'lines', line: { color: C(0), width: 2 } },
+      { x: E.concat(E.slice().reverse()), y: rows.map(r => (r.range + r.long) / cs).concat(rows.map(r => Math.max(r.range - r.long, 0) / cs).reverse()), name: 'R<sub>p</sub> ± ΔR<sub>p</sub>', fill: 'toself', mode: 'lines', line: { width: 0 }, fillcolor: rgba(C(0), 0.13), hoverinfo: 'skip' },
+      { x: E, y: rows.map(r => r.long / cs), name: 'Longitudinal straggling ΔR<sub>p</sub>', mode: 'lines', line: { color: C(1) } },
+      { x: E, y: rows.map(r => r.lat / cs), name: 'Lateral straggling', mode: 'lines', line: { color: C(2) } },
+      { x: d.results.map(r => r.energy), y: d.results.map(r => r.range / cs), name: 'Implant energies', mode: 'markers', marker: { size: 9, color: C(3), line: { color: cssVar('--panel'), width: 1.5 } } },
     ], { title: `Range and straggling of ${this.title}`, xaxis: { type: 'log', title: 'Ion energy (keV)' }, yaxis: { type: 'log', title: `Distance (${cu})` } });
     const cards = $('#im-cards'); cards.innerHTML = '';
     const peak = Math.max(...d.total);
@@ -690,7 +787,9 @@ const Trim = {
       amin = Math.max(amin, -0.25 * depth); amax = Math.min(Math.max(reach * 1.08, layers[0].bottom), depth * 1.15 + 1);
     }
     bmax = Math.max(bmax, (amax - amin) * 0.15);
-    const pad = { l: 64, r: 16, t: 16, b: 44 };
+    const narrow = isNarrow();
+    const pad = narrow ? { l: 46, r: 8, t: 8, b: 38 } : { l: 64, r: 16, t: 16, b: 44 };
+    const fs = narrow ? 11 : 12.5;
     const pw = W - pad.l - pad.r, ph = H - pad.t - pad.b;
     let sx = pw / (amax - amin), sy = ph / (2 * bmax);
     if (view === 'yz') { const s = Math.min(sx, sy); sx = sy = s; }
@@ -698,38 +797,44 @@ const Trim = {
     const text = cssVar('--text'), muted = cssVar('--muted'), line = cssVar('--line');
     // layers
     if (view !== 'yz') {
-      const fills = ['rgba(47,91,211,.07)', 'rgba(242,165,65,.10)', 'rgba(41,163,106,.09)', 'rgba(142,91,211,.09)'];
+      // layers: alternate light grey bands, boundaries dotted
       layers.forEach((l, i) => {
         const x0 = Math.max(X(l.top), pad.l), x1 = Math.min(X(l.bottom), W - pad.r);
         if (x1 <= x0) return;
-        g.fillStyle = fills[i % fills.length]; g.fillRect(x0, pad.t, x1 - x0, ph);
-        g.strokeStyle = line; g.beginPath(); g.moveTo(X(l.bottom), pad.t); g.lineTo(X(l.bottom), pad.t + ph); g.stroke();
-        g.fillStyle = muted; g.font = '12px system-ui'; g.fillText(l.name, x0 + 6, pad.t + 16);
+        g.fillStyle = i % 2 ? cssVar('--grid') : rgba(cssVar('--s1'), 0.05); g.fillRect(x0, pad.t, x1 - x0, ph);
+        g.strokeStyle = muted; g.setLineDash([2, 3]); g.beginPath(); g.moveTo(X(l.bottom), pad.t); g.lineTo(X(l.bottom), pad.t + ph); g.stroke(); g.setLineDash([]);
+        g.fillStyle = muted; g.font = `${fs}px ${FONT}`; g.textAlign = 'left'; g.fillText(l.name, x0 + 6, pad.t + 16);
       });
       g.strokeStyle = text; g.beginPath(); g.moveTo(X(0), pad.t); g.lineTo(X(0), pad.t + ph); g.stroke();
     }
     // axes
     const [lu, ls] = lenUnit(Math.max(amax - amin, 2 * bmax));
-    g.fillStyle = muted; g.font = '11.5px system-ui'; g.strokeStyle = line;
-    const ticks = (lo, hi, n) => { const span = (hi - lo) / n, p = Math.pow(10, Math.floor(Math.log10(span))); const step = [1, 2, 5, 10].map(m => m * p).find(s => s >= span) || span; const out = []; for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) out.push(v); return out; };
-    for (const v of ticks(amin, amax, 8)) { const x = X(v); g.fillText(fmt(v / ls, 3), x - 10, H - pad.b + 16); g.beginPath(); g.moveTo(x, pad.t + ph); g.lineTo(x, pad.t + ph + 4); g.stroke(); }
-    for (const v of ticks(-bmax, bmax, 6)) { const y = Y(v); g.fillText(fmt(v / ls, 3), 6, y + 4); g.beginPath(); g.moveTo(pad.l - 4, y); g.lineTo(pad.l, y); g.stroke(); }
-    g.fillStyle = text; g.font = '12.5px system-ui';
+    // frame with inside ticks on all four sides, labels left and bottom
+    g.fillStyle = text; g.font = `${fs}px ${FONT}`; g.strokeStyle = text; g.lineWidth = 1;
+    const ticks = (lo, hi, n) => { const span = (hi - lo) / n, p = Math.pow(10, Math.floor(Math.log10(span))); const step = [1, 2, 5, 10].map(m => m * p).find(s => s >= span) || span; const out = []; for (let v = Math.ceil(lo / step) * step; v <= hi + 1e-9 * step; v += step) out.push(Math.abs(v) < 1e-9 * step ? 0 : v); return out; };
+    const tl = 6;
+    g.textAlign = 'center'; g.textBaseline = 'top';
+    for (const v of ticks(amin, amax, narrow ? 5 : 8)) { const x = Math.round(X(v)) + 0.5; g.fillText(fmt(v / ls, 3), x, pad.t + ph + 5); g.beginPath(); g.moveTo(x, pad.t + ph); g.lineTo(x, pad.t + ph - tl); g.moveTo(x, pad.t); g.lineTo(x, pad.t + tl); g.stroke(); }
+    g.textAlign = 'right'; g.textBaseline = 'middle';
+    for (const v of ticks(-bmax, bmax, narrow ? 5 : 6)) { const y = Math.round(Y(v)) + 0.5; g.fillText(fmt(v / ls, 3), pad.l - 5, y); g.beginPath(); g.moveTo(pad.l, y); g.lineTo(pad.l + tl, y); g.moveTo(pad.l + pw, y); g.lineTo(pad.l + pw - tl, y); g.stroke(); }
+    g.strokeRect(pad.l + 0.5, pad.t + 0.5, pw - 1, ph - 1);
     const an = { xy: ['Depth', 'Y'], xz: ['Depth', 'Z'], yz: ['Y', 'Z'] }[view];
-    g.fillText(`${an[0]} (${lu})`, pad.l + pw / 2 - 30, H - 8);
-    g.save(); g.translate(14, pad.t + ph / 2 + 20); g.rotate(-Math.PI / 2); g.fillText(`${an[1]} (${lu})`, 0, 0); g.restore();
+    g.textAlign = 'center'; g.textBaseline = 'alphabetic';
+    g.fillText(`${an[0]} (${lu})`, pad.l + pw / 2, H - 6);
+    g.save(); g.translate(narrow ? 11 : 14, pad.t + ph / 2); g.rotate(-Math.PI / 2); g.fillText(`${an[1]} (${lu})`, 0, 0); g.restore();
+    g.textAlign = 'left';
     g.save(); g.beginPath(); g.rect(pad.l, pad.t, pw, ph); g.clip();
     // recoils
     if ($('#tr-showrec').checked && this.result && this.result.recoil_segments) {
-      g.strokeStyle = 'rgba(228,87,46,.55)'; g.lineWidth = 0.7; g.beginPath();
+      g.strokeStyle = rgba(cssVar('--s2'), 0.55); g.lineWidth = 0.7; g.beginPath();
       for (const s of this.result.recoil_segments) { g.moveTo(X(s[ia]), Y(s[ib])); g.lineTo(X(s[3 + ia]), Y(s[3 + ib])); }
       g.stroke();
     }
     // ion paths
-    const col = { S: '#2f5bd3', T: '#29a36a', B: '#f2a541' };
-    g.lineWidth = 1.1;
+    const col = { S: cssVar('--s1'), T: cssVar('--s3'), B: cssVar('--s4') };
+    g.lineWidth = 1;
     for (const t of trajs) {
-      g.strokeStyle = col[t.fate] || '#2f5bd3'; g.globalAlpha = 0.85; g.beginPath();
+      g.strokeStyle = col[t.fate] || col.S; g.globalAlpha = 0.8; g.beginPath();
       t.points.forEach((p, i) => { const x = X(p[ia]), y = Y(p[ib]); if (i) g.lineTo(x, y); else g.moveTo(x, y); });
       g.stroke();
     }
@@ -737,14 +842,14 @@ const Trim = {
     // final positions
     if ($('#tr-showstop').checked && this.result && this.result.stopped) {
       const st = this.result.stopped, n = Math.min(st.x.length, 8000);
-      g.fillStyle = 'rgba(28,35,51,.55)';
-      if (document.documentElement.dataset.theme === 'dark' || (!document.documentElement.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches)) g.fillStyle = 'rgba(230,234,243,.55)';
+      g.fillStyle = cssVar('--text'); g.globalAlpha = 0.55;
       const P = [st.x, st.y, st.z];
       for (let i = 0; i < n; i++) g.fillRect(X(P[ia][i]) - 1, Y(P[ib][i]) - 1, 2, 2);
+      g.globalAlpha = 1;
     }
     g.restore();
     $('#tr-legend').innerHTML = `<div><span style="background:${col.S}"></span>stopped ions</div><div><span style="background:${col.T}"></span>transmitted</div><div><span style="background:${col.B}"></span>backscattered</div>` +
-      ($('#tr-showrec').checked && this.result && this.result.recoil_segments && this.result.recoil_segments.length ? '<div><span style="background:#e4572e"></span>recoil atoms</div>' : '') +
+      ($('#tr-showrec').checked && this.result && this.result.recoil_segments && this.result.recoil_segments.length ? `<div><span style="background:${cssVar('--s2')}"></span>recoil atoms</div>` : '') +
       `<div class="muted">${trajs.length} trajectories${this.result ? '' : ' (live)'}</div>`;
   },
   render() {
@@ -772,16 +877,18 @@ const Trim = {
     $('#tr-range-cards').append(card('Mean projected range', LR(sm.range)), card('Straggling', LR(sm.straggling)),
       card('Lateral range', LR(sm.lateral), 'straggling ' + LR(sm.lateral_straggling)), card('Radial range', LR(sm.radial), 'straggling ' + LR(sm.radial_straggling)),
       card('Ions', r.ions, `${sm.backscattered} backscattered · ${sm.transmitted} transmitted`));
-    if (r.range) {
+    const nostop = r.ions > 0 && sm.backscattered + sm.transmitted >= r.ions;
+    if (nostop) ['plot-tr-range', 'plot-tr-recoil', 'plot-tr-lat', 'plot-tr-scatter'].forEach((id, i) => clearPlot(id, i ? '' : '<p class="hint">No ion stopped in the target: all were transmitted or backscattered.</p>'));
+    if (r.range && !nostop) {
       const g = r.range.depth.map(x => (sm.straggling > 0 ? 1e8 * (r.ions - sm.backscattered - sm.transmitted) / r.ions / (Math.sqrt(2 * Math.PI) * sm.straggling) * Math.exp(-0.5 * ((x - sm.range) / sm.straggling) ** 2) : 0));
       plot('plot-tr-range', [
-        { x: X(r.range.depth), y: r.range.ions, name: 'Ions (TRIM)', type: 'bar', marker: { color: PALETTE[0], opacity: .8 } },
-        { x: X(r.range.depth), y: g, name: 'Gaussian (Rp, ΔRp)', mode: 'lines', line: { color: PALETTE[1], width: 2 } },
-      ], { title: 'Ion range distribution', xaxis: xa, yaxis: { title: '(atoms/cm³) / (atoms/cm²)' }, shapes, bargap: 0 });
+        stepTrace(X(r.range.depth), r.range.ions, 'Ions (TRIM)', C(0), { line: { shape: 'hvh', color: C(0), width: 1.5, dash: 'solid' } }),
+        { x: X(r.range.depth), y: g, name: 'Gaussian (R<sub>p</sub>, ΔR<sub>p</sub>)', mode: 'lines', line: { color: C(1), width: 1.6, dash: 'dash' } },
+      ], { title: 'Ion range distribution', xaxis: xa, yaxis: { title: '(atoms/cm³) / (atoms/cm²)', rangemode: 'tozero' }, shapes });
       if (r.range.recoils.length && r.range.recoils.some(c => c.some(v => v > 0))) {
-        plot('plot-tr-recoil', r.range.recoils.map((c, i) => ({ x: X(r.range.depth), y: c, name: elems[i] + ' recoils', mode: 'lines', line: { color: PALETTE[(i + 2) % PALETTE.length], width: 2 } })),
+        plot('plot-tr-recoil', r.range.recoils.map((c, i) => ({ x: X(r.range.depth), y: c, name: elems[i] + ' recoils', mode: 'lines', line: { color: C(i + 1) } })),
           { title: 'Final distribution of recoil atoms (target atoms displaced)', xaxis: xa, yaxis: { title: '(atoms/cm³) / (atoms/cm²)' }, shapes });
-      } else $('#plot-tr-recoil').innerHTML = '<p class="hint">Recoil atom distributions need a full damage cascade calculation.</p>';
+      } else clearPlot('plot-tr-recoil', '<p class="hint">Recoil atom distributions need a full damage cascade calculation.</p>');
     }
     // damage
     $('#tr-dmg-cards').innerHTML = '';
@@ -792,57 +899,71 @@ const Trim = {
       const v = r.vacancy;
       const tr = [];
       if (v.vacancies.length >= 2 && this.q.calculation === 2) {
-        tr.push({ x: X(v.depth), y: v.knock_ons, name: 'Knock-ons (PKA)', mode: 'lines', line: { color: PALETTE[0], width: 2, dash: 'dot' } });
-        v.vacancies.forEach((c, i) => tr.push({ x: X(v.depth), y: c, name: elems[i] + ' vacancies', mode: 'lines', line: { color: PALETTE[(i + 1) % PALETTE.length], width: 2.2 } }));
+        tr.push({ x: X(v.depth), y: v.knock_ons, name: 'Knock-ons (PKA)', mode: 'lines', line: { color: C(0) } });
+        v.vacancies.forEach((c, i) => tr.push({ x: X(v.depth), y: c, name: elems[i] + ' vacancies', mode: 'lines', line: { color: C(i + 1) } }));
       } else {
-        tr.push({ x: X(v.depth), y: v.knock_ons, name: 'Vacancies by ions', mode: 'lines', line: { color: PALETTE[0], width: 2 } });
-        if (v.vacancies[0]) tr.push({ x: X(v.depth), y: v.vacancies[0], name: 'Vacancies by recoils', mode: 'lines', line: { color: PALETTE[1], width: 2 } });
+        tr.push({ x: X(v.depth), y: v.knock_ons, name: 'Vacancies by ions', mode: 'lines', line: { color: C(0) } });
+        if (v.vacancies[0]) tr.push({ x: X(v.depth), y: v.vacancies[0], name: 'Vacancies by recoils', mode: 'lines', line: { color: C(1) } });
       }
       plot('plot-tr-vac', tr, { title: 'Vacancy production', xaxis: xa, yaxis: { title: 'Vacancies / (Å · ion)' }, shapes });
     }
-    if (r.novac && r.novac.number.length) plot('plot-tr-novac', [{ x: X(r.novac.depth), y: r.novac.number, name: 'Replacement collisions', mode: 'lines', line: { color: PALETTE[4], width: 2 } }], { title: 'Replacement collisions', xaxis: xa, yaxis: { title: 'Number / (Å · ion)' }, shapes });
-    else $('#plot-tr-novac').innerHTML = '';
+    if (r.novac && r.novac.number.length) plot('plot-tr-novac', [{ x: X(r.novac.depth), y: r.novac.number, name: 'Replacement collisions', mode: 'lines', line: { color: C(0) } }], { title: 'Replacement collisions', xaxis: xa, yaxis: { title: 'Number / (Å · ion)' }, shapes });
+    else clearPlot('plot-tr-novac', '');
     // energy
     if (r.exyz && r.exyz.length) {
-      plot('plot-tr-exyz', r.exyz.map((c, i) => ({ x: X(c.x), y: c.e, name: 'ion ' + c.n, mode: 'lines', showlegend: false, line: { color: PALETTE[i % PALETTE.length], width: 1 }, opacity: .8 })),
+      plot('plot-tr-exyz', r.exyz.map((c, i) => ({ x: X(c.x), y: c.e, name: 'ion ' + c.n, mode: 'lines', showlegend: false, line: { color: C(0), width: 0.8, dash: 'solid' }, opacity: 0.55 })),
         { title: `Ion energy vs depth (EXYZ.txt, ${r.exyz.length} ions)`, xaxis: xa, yaxis: { title: 'Energy (keV)' }, shapes, hovermode: 'closest' });
-    } else $('#plot-tr-exyz').innerHTML = '';
-    if (r.ioniz) plot('plot-tr-ioniz', [{ x: X(r.ioniz.depth), y: r.ioniz.ions, name: 'by ions', mode: 'lines', line: { color: PALETTE[0], width: 2 } }, { x: X(r.ioniz.depth), y: r.ioniz.recoils, name: 'by recoils', mode: 'lines', line: { color: PALETTE[1], width: 2 } }], { title: 'Ionization', xaxis: xa, yaxis: { title: 'eV / (Å · ion)' }, shapes });
-    if (r.phonons) plot('plot-tr-phon', [{ x: X(r.phonons.depth), y: r.phonons.ions, name: 'by ions', mode: 'lines', line: { color: PALETTE[0], width: 2 } }, { x: X(r.phonons.depth), y: r.phonons.recoils, name: 'by recoils', mode: 'lines', line: { color: PALETTE[1], width: 2 } }], { title: 'Phonons', xaxis: xa, yaxis: { title: 'eV / (Å · ion)' }, shapes });
-    if (r.e2recoil) plot('plot-tr-e2r', [{ x: X(r.e2recoil.depth), y: r.e2recoil.ions, name: 'from ions', mode: 'lines', line: { color: PALETTE[0], width: 2 } }].concat(r.e2recoil.absorbed.map((c, i) => ({ x: X(r.e2recoil.depth), y: c, name: r.e2recoil.absorbed.length > 1 ? 'absorbed by ' + elems[i] : 'absorbed by recoils', mode: 'lines', line: { color: PALETTE[(i + 1) % PALETTE.length], width: 2 } }))), { title: 'Energy transferred to recoils', xaxis: xa, yaxis: { title: 'eV / (Å · ion)' }, shapes });
+    } else clearPlot('plot-tr-exyz', '');
+    if (r.ioniz) plot('plot-tr-ioniz', [{ x: X(r.ioniz.depth), y: r.ioniz.ions, name: 'by ions', mode: 'lines', line: { color: C(0) } }, { x: X(r.ioniz.depth), y: r.ioniz.recoils, name: 'by recoils', mode: 'lines', line: { color: C(1) } }], { title: 'Ionization', xaxis: xa, yaxis: { title: 'eV / (Å · ion)' }, shapes });
+    if (r.phonons) plot('plot-tr-phon', [{ x: X(r.phonons.depth), y: r.phonons.ions, name: 'by ions', mode: 'lines', line: { color: C(0) } }, { x: X(r.phonons.depth), y: r.phonons.recoils, name: 'by recoils', mode: 'lines', line: { color: C(1) } }], { title: 'Phonons', xaxis: xa, yaxis: { title: 'eV / (Å · ion)' }, shapes });
+    if (r.e2recoil) plot('plot-tr-e2r', [{ x: X(r.e2recoil.depth), y: r.e2recoil.ions, name: 'from ions', mode: 'lines', line: { color: C(0) } }].concat(r.e2recoil.absorbed.map((c, i) => ({ x: X(r.e2recoil.depth), y: c, name: r.e2recoil.absorbed.length > 1 ? 'absorbed by ' + elems[i] : 'absorbed by recoils', mode: 'lines', line: { color: C(i + 1) } }))), { title: 'Energy transferred to recoils', xaxis: xa, yaxis: { title: 'eV / (Å · ion)' }, shapes });
     // lateral
-    if (r.lateral) {
+    if (r.lateral && !nostop) {
       const l = r.lateral;
       plot('plot-tr-lat', [
-        { x: X(l.depth), y: l.lateral_range.map(v => v / ls), name: 'Lateral projected range', mode: 'lines+markers', marker: { size: 4 }, line: { color: PALETTE[0] } },
-        { x: X(l.depth), y: l.lateral_straggling.map(v => v / ls), name: 'Projected straggling', mode: 'lines', line: { color: PALETTE[1] } },
-        { x: X(l.depth), y: l.radial_range.map(v => v / ls), name: 'Radial range', mode: 'lines', line: { color: PALETTE[2] } },
-        { x: X(l.depth), y: l.radial_straggling.map(v => v / ls), name: 'Radial straggling', mode: 'lines', line: { color: PALETTE[3] } },
+        { x: X(l.depth), y: l.lateral_range.map(v => v / ls), name: 'Lateral projected range', mode: 'lines', line: { color: C(0) } },
+        { x: X(l.depth), y: l.lateral_straggling.map(v => v / ls), name: 'Projected straggling', mode: 'lines', line: { color: C(1) } },
+        { x: X(l.depth), y: l.radial_range.map(v => v / ls), name: 'Radial range', mode: 'lines', line: { color: C(2) } },
+        { x: X(l.depth), y: l.radial_straggling.map(v => v / ls), name: 'Radial straggling', mode: 'lines', line: { color: C(3) } },
       ], { title: 'Lateral spread of the stopped ions vs depth', xaxis: xa, yaxis: { title: `(${lu})` }, shapes });
     }
-    if (r.stopped) {
+    if (r.stopped && !nostop) {
       const s = r.stopped;
-      plot('plot-tr-scatter', [{ x: s.y.map(v => v / ls), y: s.z.map(v => v / ls), type: 'histogram2d', colorscale: 'Viridis', nbinsx: 60, nbinsy: 60, colorbar: { title: 'ions' } }],
-        { title: `Final ion positions seen along the beam (${s.count} ions)`, xaxis: { title: `Y (${lu})` }, yaxis: { title: `Z (${lu})`, scaleanchor: 'x' }, hovermode: 'closest' });
+      // ion density seen along the beam: empty bins in the panel colour, then one hue light -> dark
+      const m = Math.max(1e-9, ...s.y.map(Math.abs), ...s.z.map(Math.abs)) / ls * 1.05;
+      const c0 = C(0), pc = cssVar('--panel');
+      plot('plot-tr-scatter', [{ x: s.y.map(v => v / ls), y: s.z.map(v => v / ls), type: 'histogram2d', name: 'ions',
+        xbins: { start: -m, end: m, size: m / 30 }, ybins: { start: -m, end: m, size: m / 30 }, zmin: 0,
+        colorscale: [[0, pc], [1e-6, rgba(c0, 0.15)], [0.5, rgba(c0, 0.6)], [1, c0]], hovertemplate: 'Y %{x}<br>Z %{y}<br>%{z} ions<extra></extra>',
+        colorbar: { title: { text: 'ions', side: 'right' }, thickness: 12, outlinewidth: 1, outlinecolor: cssVar('--text'), ticks: 'inside', tickcolor: cssVar('--text'), tickfont: { color: cssVar('--text') } } }],
+        { title: `Final ion positions seen along the beam (${s.count} ions)`, xaxis: { title: `Y (${lu})`, range: [-m, m], constrain: 'domain', showgrid: false }, yaxis: { title: `Z (${lu})`, range: [-m, m], scaleanchor: 'x', constrain: 'domain', showgrid: false }, hovermode: 'closest' });
     }
     // transmitted / backscattered / sputtered
     const oc = $('#tr-out-cards'); oc.innerHTML = '';
-    const tr = [], ang = [];
+    const tr = [], ang = [], outs = [];
     const add = (o, name, c) => {
       if (!o) return;
       const mean = o.energy.reduce((a, b) => a + b, 0) / o.energy.length;
       oc.append(card(name, o.count, 'mean energy ' + fmtE(mean / 1000)));
-      tr.push({ x: o.energy.map(v => v / 1000), name, type: 'histogram', opacity: .7, marker: { color: c }, nbinsx: 60 });
       const th = o.cx.map((c0, i) => (name === 'Backscattered' ? 180 / Math.PI * Math.acos(Math.min(1, -c0)) : 180 / Math.PI * Math.acos(Math.min(1, Math.abs(c0)))));
-      ang.push({ x: th, name, type: 'histogram', opacity: .7, marker: { color: c }, nbinsx: 60 });
+      outs.push({ e: o.energy.map(v => v / 1000), th, name, c });
     };
-    add(r.transmitted, 'Transmitted', PALETTE[2]); add(r.backscattered, 'Backscattered', PALETTE[3]); add(r.sputtered, 'Sputtered', PALETTE[1]);
+    add(r.transmitted, 'Transmitted', C(2)); add(r.backscattered, 'Backscattered', C(3)); add(r.sputtered, 'Sputtered', C(1));
+    if (outs.length) {
+      const emax = Math.max(...outs.map(o => Math.max(...o.e)));
+      outs.forEach((o, i) => {
+        const he = histogram(o.e, 0, emax * 1.0001, 60), ha = histogram(o.th, 0, 90, 45);
+        const dash = DASHES[i];
+        tr.push(stepTrace(he.x, he.y, o.name, o.c, { line: { shape: 'hvh', color: o.c, width: 1.5, dash } }));
+        ang.push(stepTrace(ha.x, ha.y, o.name, o.c, { line: { shape: 'hvh', color: o.c, width: 1.5, dash } }));
+      });
+    }
     if (tr.length) {
-      plot('plot-tr-espec', tr, { title: 'Energy spectra of atoms leaving the target', barmode: 'overlay', xaxis: { title: 'Energy (keV)' }, yaxis: { title: 'Counts' } });
-      plot('plot-tr-ang', ang, { title: 'Angle to the surface normal (exit direction)', barmode: 'overlay', xaxis: { title: 'Angle (deg)' }, yaxis: { title: 'Counts' } });
+      plot('plot-tr-espec', tr, { title: 'Energy spectra of atoms leaving the target', xaxis: { title: 'Energy (keV)', rangemode: 'tozero' }, yaxis: { title: 'Counts', rangemode: 'tozero' } });
+      plot('plot-tr-ang', ang, { title: 'Angle to the surface normal (exit direction)', xaxis: { title: 'Angle (deg)', range: [0, 90], dtick: 15 }, yaxis: { title: 'Counts', rangemode: 'tozero' } });
     } else {
       oc.append(card('No particles left the target', '0'));
-      $('#plot-tr-espec').innerHTML = ''; $('#plot-tr-ang').innerHTML = '';
+      clearPlot('plot-tr-espec', ''); clearPlot('plot-tr-ang', '');
     }
     // summary & files
     const sc = $('#tr-sum-cards'); sc.innerHTML = '';
@@ -884,20 +1005,23 @@ const CMP = {
     busy(btn, true);
     try {
       const d = await api('/api/stopping', q);
-      this.curves.push({ label: `${this.ion.label()} → ${this.tgt.label()}`, mass: q.ion.mass, rows: d.rows, color: PALETTE[this.curves.length % PALETTE.length] });
+      this.curves.push({ label: `${this.ion.label()} → ${this.tgt.label()}`, mass: q.ion.mass, rows: d.rows, slot: this.freeSlot() });
       setEmpty('cmp', false);
       this.render();
     } catch (e) { toast(e.message, true); } finally { busy(btn, false); }
   },
+  freeSlot() {
+    for (let i = 0; ; i++) if (!this.curves.some(c => c.slot === i)) return i;
+  },
   render() {
     const ul = $('#cmp-list'); ul.innerHTML = '';
-    this.curves.forEach((c, i) => ul.append(h('li', null, h('span', { class: 'sw', style: `background:${c.color}` }), h('span', { class: 'lbl' }, c.label), h('button', { class: 'x-btn', onclick: () => { this.curves.splice(i, 1); this.render(); } }, '✕'))));
+    this.curves.forEach((c, i) => ul.append(h('li', null, h('span', { class: 'sw', style: `background:${C(c.slot)}` }), h('span', { class: 'lbl' }, c.label), h('button', { class: 'x-btn', onclick: () => { this.curves.splice(i, 1); this.render(); } }, '✕'))));
     if (!this.curves.length) { setEmpty('cmp', true); return; }
     const q = $('#cmp-q').value, peru = $('#cmp-peru').checked;
     const val = { total: r => r.se + r.sn, se: r => r.se, sn: r => r.sn, range: r => r.range * 1e-4, long: r => r.long * 1e-4, lat: r => r.lat * 1e-4, rel: r => r.long / r.range }[q];
     const ytitle = { total: 'Total stopping (MeV cm²/mg)', se: 'Electronic stopping (MeV cm²/mg)', sn: 'Nuclear stopping (MeV cm²/mg)', range: 'Projected range (µm)', long: 'Longitudinal straggling (µm)', lat: 'Lateral straggling (µm)', rel: 'ΔRp / Rp' }[q];
-    plot('plot-cmp', this.curves.map(c => ({ x: c.rows.map(r => peru ? r.energy / c.mass : r.energy), y: c.rows.map(val), name: c.label, mode: 'lines', line: { color: c.color, width: 2.3 } })),
-      { xaxis: { type: 'log', title: peru ? 'Energy (keV/u)' : 'Energy (keV)' }, yaxis: { type: q === 'rel' ? 'linear' : 'log', title: ytitle }, legend: { orientation: 'v', x: 1.02, y: 1 } });
+    plot('plot-cmp', this.curves.map(c => ({ x: c.rows.map(r => peru ? r.energy / c.mass : r.energy), y: c.rows.map(val), name: c.label, mode: 'lines', line: { color: C(c.slot), dash: DASHES[c.slot % DASHES.length] } })),
+      { xaxis: { type: 'log', title: peru ? 'Energy (keV/u)' : 'Energy (keV)' }, yaxis: { type: q === 'rel' ? 'linear' : 'log', title: ytitle } });
   },
 };
 
