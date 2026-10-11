@@ -1,4 +1,5 @@
-# Release: push a tag such as v1.0.0.
+# Release: push a tag such as v1.0.0, or run this workflow by hand on main
+# (Actions -> Release -> Run workflow), which creates the tag v<version>.
 #   build           sdist + wheel, smoke test of the wheel in a fresh venv
 #   github-release  GitHub release for the tag, with the dist files and the
 #                   CHANGELOG section of the version as notes
@@ -10,6 +11,11 @@ name: Release
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
+
+env:
+  # the release tag: the pushed tag, or v<package version> for a manual run
+  TAG: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
 
 jobs:
   build:
@@ -22,8 +28,9 @@ jobs:
       - name: Check the version
         run: |
           v=$(python -c "import lunasrim; print(lunasrim.__version__)")
-          echo "package version $v, tag $GITHUB_REF_NAME"
-          test "v$v" = "$GITHUB_REF_NAME"
+          tag="${TAG:-v$v}"
+          echo "package version $v, tag $tag"
+          test "v$v" = "$tag"
       - name: JavaScript libraries for the offline web application
         run: sh tools/fetch_web_vendor.sh || echo "not bundled; the web application will use the CDN"
       - name: Build
@@ -58,7 +65,9 @@ jobs:
           path: dist/
       - name: Release notes from CHANGELOG.md
         run: |
-          v="${GITHUB_REF_NAME#v}"
+          if [ -z "$TAG" ]; then TAG="v$(python3 -c 'import lunasrim; print(lunasrim.__version__)')"; fi
+          echo "TAG=$TAG" >> "$GITHUB_ENV"
+          v="${TAG#v}"
           awk -v v="$v" '
             /^## \[/ { if (on) exit; if (index($0, "## [" v "]") == 1) { on = 1; next } }
             on { print }
@@ -68,7 +77,8 @@ jobs:
       - name: Create the GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" dist/* --title "LunaSRIM ${GITHUB_REF_NAME#v}" --notes-file notes.md
+        # for a manual run this also creates the tag on the current commit
+        run: gh release create "$TAG" dist/* --target "$GITHUB_SHA" --title "LunaSRIM ${TAG#v}" --notes-file notes.md
 
   pypi:
     needs: build

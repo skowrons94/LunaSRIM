@@ -78,6 +78,8 @@ A release is published by pushing a version tag:
    git push origin main v1.0.1
    ```
 
+Instead of pushing the tag, the workflow can also be started by hand on `main` (Actions, Release, Run workflow). It then creates the tag `v` followed by `lunasrim.__version__` on the current commit; the release of an existing tag is refused.
+
 The workflow `.github/workflows/release.yml` then:
 
 - checks that the tag equals `v` followed by `lunasrim.__version__`, fetches the JavaScript libraries for the offline web application, builds the source distribution and the wheel, and tests the wheel in a fresh virtual environment;
