@@ -12,7 +12,7 @@ if [ -z "$1" ] || [ ! -f "$1/TRIM.IN" ]; then
     exit 1
 fi
 d=$(cd "$1" && pwd)
-docker run --rm -v "$d":/case costrouc/pysrim sh -c '
+docker run --rm -e TRIM_TIMEOUT="${TRIM_TIMEOUT:-3000}" -v "$d":/case costrouc/pysrim sh -c '
 cd /tmp/srim && cp /case/TRIM.IN TRIM.IN && printf 1 > TRIMAUTO && rm -f "SRIM Outputs"/*.txt *.txt;
 timeout ${TRIM_TIMEOUT:-3000} xvfb-run -a wine TRIM.exe >/dev/null 2>&1;
 cp "SRIM Outputs"/*.txt /case/ 2>/dev/null; cp *.txt /case/ 2>/dev/null; cp TRIM.IN /case/TRIM.IN.used'

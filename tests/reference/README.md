@@ -50,6 +50,8 @@ reproduces them line by line (apart from the calculation date).
 | ExyzKP      | Kinchin-Pease | EXYZ.txt only (no TRIMOUT.txt is written) |
 | ExyzFCtr    | full cascade  | EXYZ.txt, transmitted ions |
 | ExyzBack    | Kinchin-Pease | EXYZ.txt, backscattered ions (2 keV H on Au) |
+| C02backscatonly | Kinchin-Pease | only BACKSCAT.txt switched on (TRIMOUT.txt content) |
+| C04sputteronly  | monolayer / sputtering | only SPUTTER.txt switched on |
 
 All files agree line by line (lunasrim also writes no file that TRIM does
 not write) with lunasrim's native VB runtime math

@@ -36,6 +36,11 @@ class TestSR(unittest.TestCase):
         with self.assertRaises(sr.SrError):
             sr.run(os.path.join(REF, 'AuH2O', 'SR.IN'), tempfile.mkdtemp())
 
+    def test_exp_overflow(self):
+        # above 5.92 GeV/u SRModule.exe stops with run-time error 6 (Overflow)
+        with self.assertRaises(sr.SrError):
+            sr.run(os.path.join(REF, 'HAu8G', 'SR.IN'), tempfile.mkdtemp())
+
     def test_stopping_table(self):
         rows = sr.stopping_table(1, 1.008, [(6, 1, 12.011)], 2.253, 10, 1000, units=7)
         e, se, sn, rp, lon, lat = rows[0]
@@ -48,7 +53,7 @@ def _make(case):
 
 
 for _case in sorted(os.listdir(REF)):
-    if _case != 'AuH2O':
+    if _case not in ('AuH2O', 'HAu8G'):
         setattr(TestSR, 'test_' + _case, _make(_case))
 
 if __name__ == '__main__':

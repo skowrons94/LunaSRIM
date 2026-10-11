@@ -9,7 +9,7 @@ covers TRIM (Monte Carlo transport of ions in matter) and the SR module
 TRIM is reproduced **ion by ion**: same random number sequence, same
 physics, same Visual Basic arithmetic (including Single precision
 variables, and the x87 math of the VB runtime) and the same output files.
-For all 44 reference cases in `tests/reference`, the files written by
+For all 46 reference cases in `tests/reference`, the files written by
 lunasrim are identical line by line to those of the original `TRIM.exe`,
 including `COLLISON.txt` and `EXYZ.txt`;
 see [Validation](#validation). The stopping and range tables are identical
@@ -202,14 +202,31 @@ More edge cases cover:
   with damage counts, and with the listing of every recoil cascade, and
   `EXYZ.txt` with stopped, transmitted and backscattered ions.
 
-All 44 cases match line by line, without exceptions, and lunasrim writes
+All 46 cases match line by line, without exceptions, and lunasrim writes
 the same set of files as TRIM.
 
-`tests/reference_sr/` does the same for `SRModule.exe` and 23 `SR.IN`
+A further campaign of 57 TRIM inputs and 24 SR inputs was run once against
+the binaries (not kept in the repository). It covered:
+
+- ion and energy extremes: 10 eV H, 1 GeV U, 89 deg incidence;
+- targets: 8 layers, 1 A layers, gas/solid/gas stacks, 10-element compounds;
+- every calculation mode and output-file switch;
+- spellings of TRIM.IN numbers (`2000`, `2000.0`, `2E3`, widths above
+  32767);
+- SR units, energy limits, compound corrections and list modes.
+
+It found two output bugs, which are fixed. The first was the TRIMOUT.txt
+content when only some files are switched on. The second was the header
+when the compound correction is 0. After the fixes all cases are identical.
+Above 5.92 GeV/u SRIM's stopping routine overflows in `Exp`, and
+SRModule.exe stops with a run-time error. lunasrim raises `SrError` there,
+and in the web app's tables it stops at that energy.
+
+`tests/reference_sr/` does the same for `SRModule.exe` and 24 `SR.IN`
 files: H to U ions, solids, gases and compounds (bone, Kapton, PMMA, steel,
 air, CO2, water), all 8 stopping units, eV to GeV energies, and Bragg
 corrections, in both table and list modes. All of them are identical to the
-original output. Two more inputs make `SRModule.exe` stop with a run-time
+original output. Three more inputs make `SRModule.exe` stop with a run-time
 error; lunasrim raises `SrError` for them.
 
 ```sh

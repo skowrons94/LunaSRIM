@@ -27,7 +27,7 @@ import shlex
 
 from . import vbmath
 from . import data_files
-from .stopping import electronic_stopping, nuclear_stopping
+from .stopping import electronic_stopping, nuclear_stopping, VBOverflow
 from .tally import F32
 from .trimin import _Reader
 from .vbfmt import vb_format, vb_cstr, vb_str
@@ -271,6 +271,18 @@ class StoppingTable(object):
         self.n = n
         # electronic stopping (internal units), Bragg's rule
         se = [None] + [0] * n
+        for i in range(1, n + 1):
+            try:
+                electronic_stopping(z1, m1, els[0].z, E[i], si.phase, corr=si.correction)
+            except VBOverflow as ex:
+                if self.strict:
+                    raise SrError(str(ex))
+                n = i - 1               # tolerant: the table ends below the limit
+                self.n = n
+                if n < 2:
+                    raise SrError(str(ex))
+                self.emax = E[n - 1]
+                break
         for k, e in enumerate(els):
             for i in range(1, n + 1):
                 s = electronic_stopping(z1, m1, e.z, E[i], si.phase, corr=si.correction) * 10
@@ -467,8 +479,8 @@ class StoppingTable(object):
             line += ('%10s' % vb_format((sc[e.z][2][3] * f100) / msum, '000.00'))[-10:]
             o.append(line + '   ')
         o.append(' ' + '=' * 36)
-        if si.correction != 0:
-            o.append(' Bragg Correction = ' + vb_format(si.correction - 1, '0.00%'))
+        # SRModule.exe uses 1 for a compound correction of 0
+        o.append(' Bragg Correction = ' + vb_format((si.correction or 1) - 1, '0.00%'))
         o.append(' Stopping Units = ' + UNITS[si.units])
         o.append(' See bottom of Table for other Stopping units ')
         o.append('')
@@ -536,7 +548,10 @@ class StoppingList(object):
         sn = [0] * len(E)
         for k, e in enumerate(si.elements):
             for i, en in enumerate(E):
-                s = electronic_stopping(z1, m1, e.z, en, si.phase, corr=si.correction) * 10
+                try:
+                    s = electronic_stopping(z1, m1, e.z, en, si.phase, corr=si.correction) * 10
+                except VBOverflow as ex:
+                    raise SrError(str(ex))
                 se[i] = (frac[k] * s) + se[i]
             for i, en in enumerate(E):
                 s = nuclear_stopping(z1, m1, e.z, e.mass, en) * 10

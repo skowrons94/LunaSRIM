@@ -9,7 +9,7 @@ if [ -z "$1" ] || [ ! -f "$1/SR.IN" ]; then
     exit 1
 fi
 d=$(cd "$1" && pwd)
-docker run --rm -v "$d":/case costrouc/pysrim sh -c '
+docker run --rm -e SR_TIMEOUT="${SR_TIMEOUT:-600}" -v "$d":/case costrouc/pysrim sh -c '
 cd "/tmp/srim/SR Module" && cp /case/SR.IN SR.IN && touch /tmp/stamp &&
 timeout ${SR_TIMEOUT:-600} xvfb-run -a wine SRModule.exe >/dev/null 2>&1;
 find . -maxdepth 1 -type f -newer /tmp/stamp ! -name SR.IN -exec cp {} /case/ \;'
