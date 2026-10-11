@@ -34,6 +34,17 @@ class TestStaticApi(unittest.TestCase):
         st, d = self.call('GET', '/api/nothing')
         self.assertEqual(st, 404)
 
+    def test_eloss(self):
+        st, d = self.call('POST', '/api/eloss', {'ion': {'z': 1, 'energy': 400}, 'target': SI, 'thickness': 1, 'unit': 'um'})
+        self.assertEqual(st, 200, d)
+        self.assertAlmostEqual(d['energy_out'], 330.46, delta=0.05)
+        self.assertAlmostEqual(d['fwhm'], 10.56, delta=0.05)
+        # tilted by 60 degrees: twice the path
+        st, t = self.call('POST', '/api/eloss', {'ion': {'z': 1, 'energy': 400, 'angle': 60}, 'target': SI, 'thickness': 0.5, 'unit': 'um'})
+        self.assertAlmostEqual(t['energy_out'], d['energy_out'], delta=0.01)
+        st, e = self.call('POST', '/api/eloss', {'ion': {'z': 1, 'energy': 400}, 'target': SI, 'thickness': 1, 'unit': 'inch'})
+        self.assertEqual(st, 422)
+
     def test_empty_fields(self):
         # an empty or invalid input field arrives as null: a message, not a crash
         ion = {'z': 18, 'energy': None}

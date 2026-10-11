@@ -20,6 +20,7 @@
   <nav class="tabs" role="tablist">
     <button class="tab active" data-view="stopping"><span class="tl">Stopping &amp; Range</span><span class="ts">Stopping</span></button>
     <button class="tab" data-view="implant"><span class="tl">Implantation</span><span class="ts">Implant</span></button>
+    <button class="tab" data-view="eloss"><span class="tl">Energy loss</span><span class="ts">ΔE</span></button>
     <button class="tab" data-view="trim"><span class="tl">TRIM Monte Carlo</span><span class="ts">TRIM</span></button>
     <button class="tab" data-view="compare">Compare</button>
     <button class="tab" data-view="about">About</button>
@@ -97,6 +98,35 @@
     </div>
     <div class="pane" id="im-curve"><div class="plot" id="plot-im-curve"></div></div>
     <div class="pane" id="im-results"><div class="cards" id="im-cards"></div><div class="table-wrap"><table class="data" id="im-tab"></table></div></div>
+  </div>
+</section>
+
+<!-- ================================================================ ENERGY LOSS -->
+<section class="view" id="view-eloss">
+  <aside class="panel form-panel">
+    <h2>Ion</h2>
+    <div class="ion-picker" data-ion="el" data-angle="1"></div>
+    <h2>Layer</h2>
+    <div class="target-editor" data-target="el"></div>
+    <label>Thickness <span class="unit-input"><input type="number" id="el-thick" value="1" min="0" step="any">
+      <select id="el-unit"><option value="A">Å</option><option value="nm">nm</option><option value="um" selected>µm</option><option value="mm">mm</option>
+      <option value="ug/cm2">µg/cm²</option><option value="mg/cm2">mg/cm²</option><option value="1e15/cm2">10¹⁵ atoms/cm²</option><option value="atoms/cm2">atoms/cm²</option></select></span></label>
+    <button class="primary wide" id="el-run">Calculate energy loss</button>
+    <p class="hint">Mean energy from the SRIM stopping power (electronic + nuclear); energy straggling with TRIM's electronic straggling model (Bohr), including the spreading or narrowing of the beam by the slope of the stopping power. With an angle, the path through the layer is thickness / cos θ. For the full exit spectrum (nuclear collisions, path length fluctuations) run <a href="#" data-goto="trim">TRIM</a> and look at the transmitted ions.</p>
+  </aside>
+  <div class="panel results-panel">
+    <div class="subtabs" data-group="el">
+      <button class="subtab active" data-pane="el-spec">Exit energy</button>
+      <button class="subtab" data-pane="el-depth">Energy vs depth</button>
+      <button class="subtab" data-pane="el-strag">Straggling vs depth</button>
+      <button class="subtab" data-pane="el-table">Table</button>
+    </div>
+    <div class="empty" id="el-empty">Choose the ion, its energy and a layer, then <b>Calculate energy loss</b>.</div>
+    <div class="cards" id="el-cards"></div>
+    <div class="pane active" id="el-spec"><div class="plot" id="plot-el-spec"></div></div>
+    <div class="pane" id="el-depth"><div class="plot" id="plot-el-depth"></div></div>
+    <div class="pane" id="el-strag"><div class="plot" id="plot-el-strag"></div></div>
+    <div class="pane" id="el-table"><div class="toolbar"><button id="el-csv">Download CSV</button></div><div class="table-wrap"><table class="data" id="el-tab"></table></div></div>
   </div>
 </section>
 
@@ -198,6 +228,7 @@
     <ul>
       <li><b>Stopping &amp; Range</b>: the SR module's stopping powers (SRIM-2013 electronic stopping, ZBL nuclear stopping) and its range/straggling integration. The tables are identical to SRModule.exe output.</li>
       <li><b>TRIM Monte Carlo</b>: the full TRIM-2013 algorithm (MAGIC scattering integral, electronic energy loss with straggling, Kinchin-Pease or full damage cascades, sputtering). Ion by ion it reproduces TRIM.exe, including its output files, which you can download.</li>
+      <li><b>Energy loss</b>: the energy of a beam after a layer and its energy straggling (σ, FWHM) from the SRIM stopping power and TRIM's straggling model (Bohr), with the exit energy distribution and depth profiles. Not part of SRIM's programs: an analytical calculation with the same physics.</li>
       <li><b>Implantation</b>: implant depth profiles from projected range and straggling, multi-energy (box) implants, and range curves for elements or any of SRIM's 350 compounds.</li>
     </ul>
     <p>The Python package can also be used directly:</p>

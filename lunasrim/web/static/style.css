@@ -194,7 +194,7 @@ button.wide { width: 100%; margin-top: 14px; padding: 9px; font-size: 14.5px; }
 .subtab.active { color: var(--primary); background: color-mix(in srgb, var(--primary) 12%, transparent); }
 .pane { display: none; }
 .pane.active { display: block; }
-.has-empty .pane { display: none !important; }
+.has-empty .pane, .has-empty .cards { display: none !important; }
 .empty { color: var(--muted); padding: 80px 20px; text-align: center; font-size: 15px; }
 .plot { width: 100%; height: 470px; }
 .plot.tall { height: 640px; }

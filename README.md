@@ -108,6 +108,46 @@ stopping.nuclear_stopping(1, 1.008, 6, 12.011, 100.0)
 stopping.compound_stopping(8, 15.999, [(1, 1.008, 2), (8, 15.999, 1)], 1000.0, phase=1)
 ```
 
+### Energy loss and energy straggling
+
+```python
+from lunasrim.straggling import energy_loss
+r = energy_loss(1, 1.008, 400, [(14, 1, 28.086)], density=2.3212, thickness=1, unit='um')
+r['energy_out'], r['sigma'], r['fwhm']      # 330.46 keV, 4.48 keV, 10.56 keV
+```
+
+This gives the beam energy after a layer and its spread, without a Monte
+Carlo. The thickness can be given in Å, nm, µm, mm, µg/cm², mg/cm²,
+10¹⁵ atoms/cm² or atoms/cm².
+
+- The **mean energy** is integrated with the SRIM stopping power
+  (SRModule's S(E), electronic + nuclear, with the compound correction).
+- The **variance** grows by the electronic straggling W(E). It is also
+  stretched or narrowed by the slope of the stopping power:
+  dΩ²/dx = W(E) − 2 (dS/dE) Ω².
+- **W(E) is TRIM.exe's own model** (`trim.py`, electronic energy loss of
+  each flight path). It is Bohr's straggling, 4πe⁴Z₁²Z₂N, with TRIM's
+  relativistic factor and its integer mean Z₂. A low-energy reduction
+  exists but only acts below a few hundred eV. Plain Bohr with the exact
+  mean Z₂ is given too (`sigma_bohr`).
+- **Nuclear collisions** enter the mean energy but not the spread. They
+  give a low-energy tail, which a TRIM calculation shows (transmitted
+  ions).
+
+Against lunasrim's TRIM (4000 ions, the σ of the transmitted ions without
+the nuclear tail, i.e. half the 16–84 % interval):
+
+| ion, energy | layer | exit energy (analytic / TRIM median) | σ (analytic / TRIM) |
+|---|---|---|---|
+| H 400 keV  | Si 1 µm    | 330.5 / 331.6 keV | 4.48 / 4.55 keV |
+| H 100 keV  | C 300 nm   | 50.1 / 50.1 keV   | 2.22 / 2.38 keV |
+| He 2 MeV   | Au 300 nm  | 1799.8 / 1799.8 keV | 12.3 / 12.6 keV |
+| He 300 keV | N₂ gas 200 µm | 258.5 / 258.3 keV | 2.72 / 2.89 keV |
+| C 5 MeV    | Ni 500 nm  | 3485.2 / 3483.8 keV | 33.6 / 34.5 keV |
+
+TRIM's σ is 2–7 % larger: its ions also differ in path length (angular
+scattering) and in nuclear energy losses.
+
 ### Example scripts
 
 `scripts/` has the original LunaSRIM calculations, now running on
@@ -133,7 +173,7 @@ python -m lunasrim.web               # http://127.0.0.1:8000/
 
 Or run it with Docker: `docker build -t lunasrim . && docker run -p 8000:8000 lunasrim`.
 
-The web application has four tools.
+The web application has five tools.
 
 **Stopping & Range.** This is the SRIM "Stopping and Range Tables":
 - pick the ion from a periodic table, and an element, a chemical formula or
@@ -150,6 +190,14 @@ The web application has four tools.
 - a box-profile helper that chooses energies and doses for a flat
   concentration between two depths.
 
+**Energy loss.** For an ion beam crossing one layer (element, compound or
+gas; thickness as length, mass or areal density; tilted at an angle):
+- the exit energy, the electronic and nuclear energy loss, and the mean
+  energy in the layer;
+- the energy straggling σ and FWHM (TRIM's model and Bohr's);
+- the exit energy distribution, and the energy and straggling vs depth;
+- a table and CSV of the depth profile.
+
 **TRIM Monte Carlo.** You define multi-layer targets (elements or compounds,
 gas or solid, with displacement, lattice and surface energies) and the
 calculation type, then follow the run live. The results are:
@@ -158,7 +206,8 @@ calculation type, then follow the run live. The results are:
 - vacancies per element, replacement collisions, ionization, phonons and
   energy given to recoils;
 - lateral spread and final ion positions;
-- energy and angle spectra of transmitted, backscattered and sputtered atoms;
+- energy and angle spectra of transmitted, backscattered and sputtered atoms,
+  with their mean energy, σ and FWHM;
 - all of TRIM's output files, also as a zip.
 
 A depth window (SRIM's plot window) sets the histogram resolution.
@@ -355,6 +404,7 @@ for exact agreement:
   - `rng.py`: random numbers.
   - `vbfmt.py`: VB number formatting.
   - `vbmath.py`: VB runtime math (x87 routines of msvbvm50.dll).
+  - `straggling.py`: energy loss and energy straggling through a layer.
   - `tally.py`: distributions.
   - `compounds.py`: SRIM's compound dictionary.
   - `web/`: the web application (`core.py` logic, FastAPI server, Pyodide

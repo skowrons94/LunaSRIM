@@ -36,6 +36,8 @@ def handle(method, path, body_text):
             return _ok(core.stopping(body))
         if method == 'POST' and path == '/api/implant':
             return _ok(core.implant(body))
+        if method == 'POST' and path == '/api/eloss':
+            return _ok(core.eloss(body))
         if method == 'POST' and path == '/api/trim':
             q = core.trim_request(body, MAX_IONS)
             for jid in list(RUNS):            # keep the memory file system small

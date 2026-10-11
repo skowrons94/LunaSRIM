@@ -9,6 +9,8 @@ Main entry points:
 * :func:`lunasrim.srim.run_trim`  run a :class:`lunasrim.trimin.TrimInput`
 * :mod:`lunasrim.results`   readers for the output files (also of SRIM itself)
 * :mod:`lunasrim.stopping`  electronic and nuclear stopping powers
+* :mod:`lunasrim.sr`        stopping and range tables (SRModule.exe)
+* :func:`lunasrim.straggling.energy_loss`  energy loss and straggling in a layer
 * ``python -m lunasrim TRIM.IN``  command line
 """
 from .trimin import TrimInput

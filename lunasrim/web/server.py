@@ -105,6 +105,13 @@ class ImplantIn(BaseModel):
     depth_points: int = 400
 
 
+class ElossIn(BaseModel):
+    ion: IonIn
+    target: MaterialIn
+    thickness: float = Field(..., gt=0)
+    unit: str = 'nm'               # A, nm, um, mm, ug/cm2, mg/cm2, 1e15/cm2, atoms/cm2
+
+
 class TrimIn(BaseModel):
     ion: IonIn
     layers: List[MaterialIn]
@@ -123,6 +130,11 @@ class TrimIn(BaseModel):
 @app.post('/api/stopping')
 def api_stopping(q: StoppingIn):
     return _call(core.stopping, _dict(q))
+
+
+@app.post('/api/eloss')
+def api_eloss(q: ElossIn):
+    return _call(core.eloss, _dict(q))
 
 
 @app.post('/api/implant')

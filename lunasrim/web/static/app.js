@@ -649,6 +649,76 @@ const IM = {
     for (const r of d.results) t.append(h('tr', null, h('td', null, fmtE(r.energy)), h('td', null, fmt(r.dose, 3)), h('td', null, fmtLen(r.range)), h('td', null, fmtLen(r.long)), h('td', null, fmtLen(r.lat)), h('td', null, fmt(r.se)), h('td', null, fmt(r.sn))));
   },
 };
+// ------------------------------------------------- energy loss / straggling
+const EL = {
+  init() {
+    this.ion = new IonPicker($('[data-ion="el"]'), { z: 1, trim: true, energy: 400 });
+    this.tgt = new TargetEditor($('[data-target="el"]'), { z: 14 });
+    $('#el-run').onclick = () => this.run();
+    $('#el-csv').onclick = () => this.csv();
+    setEmpty('el', true);
+  },
+  async run() {
+    const btn = $('#el-run');
+    let q;
+    try {
+      q = { ion: this.ion.get(), target: this.tgt.get(), thickness: parseFloat($('#el-thick').value), unit: $('#el-unit').value };
+    } catch (e) { toast(e.message, true); return; }
+    if (!(q.thickness > 0)) { toast('thickness: enter a positive number', true); return; }
+    busy(btn, true);
+    try {
+      this.data = await api('/api/eloss', q);
+      this.title = `${this.ion.label()} in ${this.tgt.label()}`;
+      setEmpty('el', false);
+      this.render();
+    } catch (e) { toast(e.message, true); } finally { busy(btn, false); }
+  },
+  render() {
+    const d = this.data, p = d.profile;
+    const [lu, ls] = lenUnit(d.depth_reached || d.thickness);
+    const x = p.depth.map(v => v / ls);
+    const cards = $('#el-cards'); cards.innerHTML = '';
+    if (d.stopped) cards.append(card('Ions stop in the layer', 'at ' + fmtLen(d.depth_reached), 'the mean energy falls below 1% of ' + fmtE(d.energy_in)));
+    else cards.append(card('Exit energy', fmtE(d.energy_out), 'from ' + fmtE(d.energy_in)));
+    cards.append(card('Energy loss', fmtE(d.energy_loss), `electronic ${fmtE(d.electronic_loss)} · nuclear ${fmtE(d.nuclear_loss)}`),
+      card('Energy straggling σ', fmtE(d.sigma), 'FWHM ' + fmtE(d.fwhm)),
+      card('Bohr straggling σ', fmtE(d.sigma_bohr), 'FWHM ' + fmtE(d.fwhm_bohr)),
+      card('Mean energy in the layer', fmtE(d.mean_energy), 'average over the path'),
+      card('Areal density', fmt(d.areal_density, 4) + ' atoms/cm²', fmt(d.mass_thickness, 4) + ' µg/cm²' + (d.angle ? ` · path ×${fmt(d.path_factor, 4)} (θ = ${d.angle}°)` : '')));
+    // exit spectrum (Gaussian)
+    if (!d.stopped && d.sigma > 0) {
+      const s = d.sigma, m = d.energy_out, n = 241;
+      const ex = Array.from({ length: n }, (_, i) => m - 5 * s + 10 * s * i / (n - 1));
+      const g = (sg) => ex.map(e => Math.exp(-0.5 * ((e - m) / sg) ** 2) / (Math.sqrt(2 * Math.PI) * sg));
+      const half = Math.max(...g(s)) / 2;
+      plot('plot-el-spec', [
+        { x: ex, y: g(s), name: 'TRIM model (Bohr)', mode: 'lines', line: { color: C(0), width: 1.8, dash: 'solid' }, fill: 'tozeroy', fillcolor: rgba(C(0), 0.12) },
+        { x: [m - d.fwhm / 2, m + d.fwhm / 2], y: [half, half], name: 'FWHM ' + fmtE(d.fwhm), mode: 'lines+markers', line: { color: cssVar('--text'), width: 1, dash: 'solid' }, marker: { symbol: 'line-ns-open', size: 10, color: cssVar('--text') } },
+      ], { title: `Energy of ${this.title} after ${fmtLen(d.thickness)}`, xaxis: { title: 'Energy (keV)' }, yaxis: { title: 'Probability density (1/keV)', rangemode: 'tozero' }, hovermode: 'closest' });
+    } else clearPlot('plot-el-spec', '<p class="hint">' + (d.stopped ? 'The ions stop in the layer: no exit spectrum.' : 'No straggling.') + '</p>');
+    const shapes = [];
+    plot('plot-el-depth', [
+      { x: x.concat(x.slice().reverse()), y: p.energy.map((e, i) => e + p.sigma[i]).concat(p.energy.map((e, i) => e - p.sigma[i]).reverse()), name: 'mean ± σ', fill: 'toself', mode: 'lines', line: { width: 0 }, fillcolor: rgba(C(0), 0.18), hoverinfo: 'skip' },
+      { x, y: p.energy, name: 'Mean energy', mode: 'lines', line: { color: C(0), dash: 'solid' } },
+    ], { title: `Energy of ${this.title} vs depth`, xaxis: { title: `Depth along the path (${lu})` }, yaxis: { title: 'Energy (keV)' }, shapes });
+    plot('plot-el-strag', [
+      { x, y: p.sigma, name: 'TRIM model', mode: 'lines', line: { color: C(0) } },
+      { x, y: p.sigma_bohr, name: 'Bohr (exact mean Z₂)', mode: 'lines', line: { color: C(1) } },
+    ], { title: 'Energy straggling (1 σ) vs depth', xaxis: { title: `Depth along the path (${lu})` }, yaxis: { title: 'σ (keV)', rangemode: 'tozero' } });
+    const t = $('#el-tab'); t.innerHTML = '';
+    t.append(h('tr', null, ...['Depth', 'Energy (keV)', 'σ (keV)', 'FWHM (keV)', 'σ Bohr (keV)', 'S elec. (eV/Å)', 'S nucl. (eV/Å)'].map(c => h('th', null, c))));
+    const st = Math.max(1, Math.floor(p.depth.length / 100));
+    for (let i = 0; i < p.depth.length; i += st) t.append(h('tr', null, h('td', null, fmtLen(p.depth[i])), h('td', null, fmt(p.energy[i], 6)), h('td', null, fmt(p.sigma[i], 4)), h('td', null, fmt(p.sigma[i] * 2.35482, 4)), h('td', null, fmt(p.sigma_bohr[i], 4)), h('td', null, fmt(p.se[i], 4)), h('td', null, fmt(p.sn[i], 4))));
+  },
+  csv() {
+    if (!this.data) return;
+    const p = this.data.profile;
+    const lines = ['depth_A,energy_keV,sigma_keV,sigma_bohr_keV,S_elec_eV_per_A,S_nucl_eV_per_A'];
+    p.depth.forEach((x, i) => lines.push([x, p.energy[i], p.sigma[i], p.sigma_bohr[i], p.se[i], p.sn[i]].join(',')));
+    download((this.title || 'eloss').replace(/\s+/g, '_') + '_eloss.csv', lines.join('\n') + '\n', 'text/csv');
+  },
+};
+
 function card(k, v, s) { return h('div', { class: 'card' }, h('div', { class: 'k' }, k), h('div', { class: 'v' }, v), s ? h('div', { class: 's' }, s) : null); }
 
 // ----------------------------------------------------------------- TRIM
@@ -944,7 +1014,8 @@ const Trim = {
     const add = (o, name, c) => {
       if (!o) return;
       const mean = o.energy.reduce((a, b) => a + b, 0) / o.energy.length;
-      oc.append(card(name, o.count, 'mean energy ' + fmtE(mean / 1000)));
+      const sd = Math.sqrt(o.energy.reduce((a, b) => a + (b - mean) ** 2, 0) / Math.max(1, o.energy.length - 1));
+      oc.append(card(name, o.count, `mean energy ${fmtE(mean / 1000)}` + (o.energy.length > 1 ? ` · σ ${fmtE(sd / 1000)} · FWHM ${fmtE(2.35482 * sd / 1000)}` : '')));
       const th = o.cx.map((c0, i) => (name === 'Backscattered' ? 180 / Math.PI * Math.acos(Math.min(1, -c0)) : 180 / Math.PI * Math.acos(Math.min(1, Math.abs(c0)))));
       outs.push({ e: o.energy.map(v => v / 1000), th, name, c });
     };
@@ -1034,7 +1105,7 @@ function initTheme() {
     const nxt = cur === 'dark' ? 'light' : 'dark';
     document.documentElement.dataset.theme = nxt;
     try { localStorage.setItem('lunasrim-theme', nxt); } catch (e) { /* private mode */ }
-    if (SR.data) SR.render(); if (IM.data) IM.render(); if (Trim.result) Trim.render(); else Trim.draw(); CMP.render();
+    if (SR.data) SR.render(); if (IM.data) IM.render(); if (EL.data) EL.render(); if (Trim.result) Trim.render(); else Trim.draw(); CMP.render();
   };
 }
 
@@ -1054,7 +1125,7 @@ async function boot() {
   }
   if (loading) loading.classList.add('hidden');
   Picker.build();
-  SR.init(); IM.init(); Trim.init(); CMP.init();
+  SR.init(); IM.init(); EL.init(); Trim.init(); CMP.init();
   initTabs();
   $('#about-version').textContent = S.info.static
     ? `lunasrim ${S.info.version} · running in your browser (Pyodide), no data leaves your computer`

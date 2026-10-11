@@ -14,7 +14,7 @@ import time
 import zipfile
 from types import SimpleNamespace
 
-from .. import __version__, compounds, data_files, sr
+from .. import __version__, compounds, data_files, sr, straggling
 from ..output import TrimOutput, TrimDistributions
 from ..results import Results
 from ..srim import Element, Ion, Layer, Target, TRIM
@@ -242,6 +242,45 @@ def implant(d):
     n_target = (6.022e23 * target.density) / _mean_mass(target)
     return {'results': res, 'depth': x, 'profiles': comps, 'total': total,
             'target_atom_density': n_target}
+
+
+# -------------------------------------------------- energy loss / straggling
+def eloss(d):
+    """POST /api/eloss: energy loss and straggling of ions crossing a layer"""
+    ion, target = _ion(d.get('ion')), _material(d.get('target'))
+    if ion.energy is None:
+        raise ApiError(422, 'ion energy: enter a number')
+    thickness = _num(d, 'thickness', required=True, lo=0, lo_open=True)
+    unit = str(d.get('unit') or 'nm')
+    if unit not in straggling.THICKNESS_UNITS:
+        raise ApiError(422, 'unit: one of %s' % ', '.join(straggling.THICKNESS_UNITS))
+    if not (0 < ion.energy <= 1e7):
+        raise ApiError(400, 'ion energy must be between 0 and 10 GeV')
+    els = []
+    for a in target.elements:
+        if a.stoich > 0:
+            els.append((a.z, a.stoich, a.mass if a.mass else element(a.z)['mass']))
+    if not els:
+        raise ApiError(400, 'the target has no elements')
+    if not (-89.99 <= ion.angle <= 89.99):
+        raise ApiError(400, 'angle must be within +-89.99 degrees')
+    tilt = 1 / math.cos(math.radians(ion.angle))     # path length / layer thickness
+    try:
+        r = straggling.energy_loss(ion.z, _ion_mass(ion), ion.energy, els, target.density, thickness * tilt, unit,
+                                   phase=1 if target.gas else 0, correction=target.correction)
+    except straggling.StragglingError as ex:
+        raise ApiError(400, str(ex))
+    except (ValueError, ZeroDivisionError, OverflowError) as ex:
+        raise ApiError(422, 'calculation failed: %s' % ex)
+    prof = r.pop('profile')
+    n = len(prof['depth'])
+    step = max(1, n // 300)
+    idx = list(range(0, n, step))
+    if idx[-1] != n - 1:
+        idx.append(n - 1)
+    r['profile'] = {k: [v[i] for i in idx] for k, v in prof.items()}
+    r['angle'], r['path_factor'] = ion.angle, tilt
+    return r
 
 
 # ----------------------------------------------------------------- TRIM
