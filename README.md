@@ -269,7 +269,11 @@ tools/validate_sr.py some/dir            # compare lunasrim's table with it
 Exact agreement needs the arithmetic of the VB runtime, not just the same
 formulas (see [How it was done](#how-it-was-done)). lunasrim runs the
 runtime's x87 instruction sequences natively on x86-64 (`lunasrim/vbmath.py`,
-source in `tools/vbmath.S`). On other processors, or if executable memory
+source in `tools/vbmath.S`). The x87 transcendental instructions differ in
+the last bit between CPU vendors, and the references were made on an Intel
+CPU, so the native `Exp`, `Log`, `^`, `Atn`, `Sin` and `Cos` are used only
+when they reproduce the Intel values (checked at import). On other
+processors (e.g. AMD), or if executable memory
 is not available (`LUNASRIM_NO_NATIVE_MATH=1` forces this), it uses
 Python's `math` module and an exact model of the 64-bit square root
 instead. Then all reference cases but one are still identical: one

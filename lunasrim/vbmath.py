@@ -10,9 +10,12 @@ decision (an iteration count, a flight path cut at a layer boundary) and the
 rest of a trajectory.
 
 On x86-64 the same instruction sequences are run natively (machine code
-called through ctypes), so the results are those of SRIM on the same CPU.
-Elsewhere (or if executable memory cannot be allocated) the functions fall
-back to the ``math`` module.
+called through ctypes).  The x87 transcendental instructions are not
+correctly rounded and differ in the last bit between CPU vendors; the
+native routines are used only when they reproduce SRIM's values on an Intel
+CPU (where the reference outputs were made).  Otherwise (or if executable
+memory cannot be allocated) the functions fall back to the ``math`` module,
+and the square root to an exact 64-bit-precision emulation.
 
 The routines (msvbvm50.dll, SRIM-2013 setup):
 
@@ -86,6 +89,14 @@ _ENTRY = {'pow': 0, 'exp': 41, 'log': 122, 'log_div': 151, 'atn': 209, 'sin': 23
 
 _keep = []          # executable buffer, kept alive
 
+# values given by msvbvm50.dll (and by the routines below) on an Intel CPU
+_INTEL_X87 = [
+    ('pow', (6432.957985524626, 2.0), 41382948.44352505),
+    ('pow', (145265.48020290735, 2.0), 21102059738.581264),
+    ('pow', (2.6329444762163088e-05, 2.0), 6.932396614837973e-10),
+    ('atn', (0.09014091311591388,), 0.08989795332127876),
+]
+
 
 def _load_native():
     if os.environ.get('LUNASRIM_NO_NATIVE_MATH'):
@@ -126,6 +137,12 @@ def _load_native():
             fns['sqrt'](4.0) == 2.0 and fns['sqrt'](1 - 2 ** -53) == 1.0 and
             fns['pow'](3.0, -2.0) == math.pow(3.0, -2.0)):
         return None
+    # The x87 transcendental instructions (fyl2x, f2xm1, fpatan, ...) are not
+    # correctly rounded and their last bits differ between CPU vendors.  The
+    # reference outputs were made on an Intel CPU; elsewhere only the square
+    # root (exactly specified) is used natively.
+    if not all(fns[name](*args) == v for name, args, v in _INTEL_X87):
+        return {'sqrt': fns['sqrt']}
     return fns
 
 
@@ -134,7 +151,8 @@ try:
 except Exception:       # no executable memory, ctypes missing, ...
     _native = None
 
-NATIVE = _native is not None
+NATIVE = _native is not None and 'pow' in _native
+NATIVE_SQRT = _native is not None
 
 if NATIVE:
     _npow = _native['pow']
@@ -162,7 +180,7 @@ if NATIVE:
         r = _npow(-x, y)
         return -r if math.fmod(y, 2) else r
 else:
-    sqrt = _sqrt64
+    sqrt = _native['sqrt'] if NATIVE_SQRT else _sqrt64
     exp = math.exp
     log = math.log
     atn = math.atan
