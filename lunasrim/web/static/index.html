@@ -23,6 +23,7 @@
     <button class="tab" data-view="eloss"><span class="tl">Energy loss</span><span class="ts">ΔE</span></button>
     <button class="tab" data-view="trim"><span class="tl">TRIM Monte Carlo</span><span class="ts">TRIM</span></button>
     <button class="tab" data-view="compare">Compare</button>
+    <button class="tab" data-view="physics"><span class="tl">Physics</span><span class="ts">Physics</span></button>
     <button class="tab" data-view="about">About</button>
   </nav>
   <button id="themeToggle" class="icon-btn" title="Light / dark theme" aria-label="Toggle theme"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
@@ -220,6 +221,12 @@
   <div class="panel results-panel"><div class="empty" id="cmp-empty">Add ions and targets (elements or compounds) to compare their stopping powers, ranges and straggling.</div><div class="plot tall" id="plot-cmp"></div></div>
 </section>
 
+<!-- ================================================================ PHYSICS -->
+<!-- docs/physics.md (copy: physics.md), rendered with marked + KaTeX when the tab is first opened -->
+<section class="view" id="view-physics">
+  <article class="panel prose doc" id="physics-doc"><div class="empty">Loading the physics documentation…</div></article>
+</section>
+
 <!-- ================================================================ ABOUT -->
 <section class="view" id="view-about">
   <div class="panel prose">
@@ -231,6 +238,7 @@
       <li><b>Energy loss</b>: the energy of a beam after a layer and its energy straggling (σ, FWHM) from the SRIM stopping power and TRIM's straggling model (Bohr), with the exit energy distribution and depth profiles. Not part of SRIM's programs: an analytical calculation with the same physics.</li>
       <li><b>Implantation</b>: implant depth profiles from projected range and straggling, multi-energy (box) implants, and range curves for elements or any of SRIM's 350 compounds.</li>
     </ul>
+    <p>The <a href="#physics" data-goto="physics">Physics</a> page describes the models behind these calculations, with their formulas.</p>
     <p>The Python package can also be used directly:</p>
     <pre class="code"># from the repository
 pip install .

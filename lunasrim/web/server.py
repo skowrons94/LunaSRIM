@@ -12,6 +12,8 @@ Endpoints (JSON):
 * ``GET  /api/trim/{id}``         progress and, when finished, the results
 * ``POST /api/trim/{id}/cancel``  stop a calculation (results of the ions done so far)
 * ``GET  /api/trim/{id}/files.zip``  TRIM.IN and all output files
+
+and ``GET /physics.md`` (Markdown), the physics documentation of the Physics tab.
 """
 import os
 import threading
@@ -212,6 +214,15 @@ def plotly_js():
     if os.path.exists(p):
         return FileResponse(p, media_type='application/javascript')
     return Response(status_code=404)
+
+
+@app.get('/physics.md')
+def physics_md():
+    """the physics documentation (copy of docs/physics.md) shown on the Physics tab"""
+    p = os.path.join(STATIC, 'physics.md')
+    if os.path.exists(p):
+        return FileResponse(p, media_type='text/markdown; charset=utf-8')
+    return Response('physics.md is not installed', status_code=404, media_type='text/plain')
 
 
 app.mount('/', StaticFiles(directory=STATIC, html=True), name='static')

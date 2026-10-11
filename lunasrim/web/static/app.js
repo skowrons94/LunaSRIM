@@ -369,6 +369,7 @@ class TargetEditor {
         this.rows = []; for (const [z, n] of Object.entries(f)) this.addRow(+z, n);
         this.name = formula.value.trim(); this.densityAuto = Object.keys(f).length === 1; this.gas = false;
         if (Object.keys(f).length > 1) { this.density = null; toast('Enter the density of ' + this.name); }
+        else this.autoDensity();
         this.preset.value = ''; this.render();
       } catch (e) { toast(e.message, true); }
     };
@@ -465,15 +466,22 @@ function initTabs() {
     resizePlots(panel);
     if (b.dataset.pane === 'tr-traj-pane') Trim.draw();
   })));
-  const hash = location.hash.slice(1);
-  if (hash && $('#view-' + hash)) showView(hash);
+  // #view, or #physics/section for a section of the Physics page
+  const [hv, hs] = location.hash.slice(1).split('/');
+  if (hv && $('#view-' + hv)) showView(hv, hs && decodeURIComponent(hs));
 }
-function showView(v) {
-  $$('.tab').forEach(t => t.classList.toggle('active', t.dataset.view === v));
+function showView(v, sub) {
+  $$('.tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.view === v);
+    // phones: bring the active tab into the scrolling tab bar
+    if (t.dataset.view === v && t.parentElement.scrollWidth > t.parentElement.clientWidth)
+      t.parentElement.scrollLeft = t.offsetLeft - (t.parentElement.clientWidth - t.offsetWidth) / 2;
+  });
   $$('.view').forEach(x => x.classList.toggle('active', x.id === 'view-' + v));
-  history.replaceState(null, '', '#' + v);
+  history.replaceState(null, '', '#' + v + (sub ? '/' + sub : ''));
   resizePlots($('#view-' + v));
   if (v === 'trim') Trim.draw();
+  if (v === 'physics') Physics.open(sub);
 }
 function setEmpty(prefix, empty) {
   $('#' + prefix + '-empty').classList.toggle('hidden', !empty);
@@ -1096,6 +1104,177 @@ const CMP = {
   },
 };
 
+// ---------------------------------------------------------------- physics
+// The Physics tab shows docs/physics.md (served as physics.md next to
+// index.html; tools/sync_docs.py keeps the packaged copy identical), rendered
+// with marked (Markdown) and KaTeX (formulas).  The two libraries are loaded
+// the first time the tab is opened: the local copy in vendor/
+// (tools/fetch_web_vendor.sh) if there is one, the CDN otherwise.
+const Physics = {
+  repo: 'https://github.com/skowrons94/LunaSRIM/blob/main/',
+  raw: 'https://raw.githubusercontent.com/skowrons94/LunaSRIM/main/',
+  cdn: { marked: 'https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js', katex: 'https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/' },
+  libsP: null, busy: false, done: false, pending: null,
+
+  // <script> or <link rel=stylesheet>: local file first, then the CDN
+  load(tag, local, remote) {
+    return new Promise((res, rej) => {
+      const add = (url, fail) => {
+        const e = tag === 'css' ? h('link', { rel: 'stylesheet', href: url }) : h('script', { src: url });
+        e.onload = res; e.onerror = () => { e.remove(); fail(); };
+        document.head.appendChild(e);
+      };
+      add(local, () => add(remote, () => rej(new Error('cannot load ' + remote))));
+    });
+  },
+  libs() {
+    if (!this.libsP) {
+      this.libsP = Promise.all([
+        window.marked ? 0 : this.load('js', 'vendor/marked.min.js', this.cdn.marked),
+        window.katex ? 0 : this.load('js', 'vendor/katex.min.js', this.cdn.katex + 'katex.min.js'),
+        // without the style sheet the formulas are still readable (MathML): do not fail
+        this.load('css', 'vendor/katex.min.css', this.cdn.katex + 'katex.min.css').catch(() => 0),
+      ]);
+      this.libsP.catch(() => { this.libsP = null; });   // try again next time
+    }
+    return this.libsP;
+  },
+
+  async open(section) {
+    if (section) this.pending = section;
+    if (this.done) { this.scroll(); return; }
+    if (this.busy) return;
+    this.busy = true;
+    const box = $('#physics-doc');
+    try {
+      const [md] = await Promise.all([
+        fetch('physics.md', { cache: 'no-cache' }).then(r => {
+          if (!r.ok) throw new Error('physics.md: ' + r.status + ' ' + r.statusText);
+          return r.text();
+        }),
+        this.libs(),
+      ]);
+      this.render(md, box);
+      this.done = true;
+      requestAnimationFrame(() => this.scroll());
+    } catch (e) {
+      box.replaceChildren(h('div', { class: 'empty' }, 'The physics documentation could not be loaded (' + e.message + '). ',
+        h('a', { href: this.repo + 'docs/physics.md', target: '_blank', rel: 'noopener' }, 'Read it on GitHub'), '.'));
+    } finally {
+      this.busy = false;
+    }
+  },
+
+  scroll() {
+    const el = this.pending && document.getElementById('doc-' + this.pending);
+    this.pending = null;
+    if (el) el.scrollIntoView();
+  },
+
+  // formulas are taken out of the text before the Markdown parser (which would
+  // read the _ and * of a formula as emphasis) and put back, typeset, after it
+  protectMath(md, math) {
+    const keep = (tex, display) => 'XMATHX' + (math.push({ tex, display }) - 1) + 'XENDX';
+    const inline = text => text.replace(
+      /(`+)[\s\S]*?\1|\\\$|\$\$([\s\S]+?)\$\$|\$(?![\s$])((?:\\.|[^$\\\n]|\n(?![ \t]*\n))+?)(?<!\s)\$/g,
+      (m, code, disp, inl) => disp != null ? keep(disp, true) : inl != null ? keep(inl, false) : m);
+    // fenced code blocks are left alone; ```math blocks are display formulas
+    const out = [];
+    let text = [], fence = null, body = [];
+    for (const line of md.split('\n')) {
+      if (fence) {
+        if (line.trim().startsWith(fence.mark) && line.trim().replace(/[`~]/g, '') === '') {
+          if (fence.math) out.push(fence.indent + keep(body.join('\n'), true));
+          else out.push(...fence.lines, ...body, line);
+          fence = null; body = [];
+        } else body.push(line);
+        continue;
+      }
+      const f = /^(\s*)(`{3,}|~{3,})\s*([\w-]*)/.exec(line);
+      if (f) {
+        out.push(inline(text.join('\n'))); text = [];
+        fence = { mark: f[2], indent: f[1], math: f[3] === 'math', lines: [line] };
+      } else text.push(line);
+    }
+    if (fence) out.push(...fence.lines, ...body);   // unterminated block
+    out.push(inline(text.join('\n')));
+    return out.join('\n');
+  },
+
+  render(md, box) {
+    const math = [];
+    let html = window.marked.parse(this.protectMath(md, math), { gfm: true });
+    const decode = s => { const t = document.createElement('textarea'); t.innerHTML = s; return t.value; };
+    // heading anchors: GitHub-style slugs (from the text, formulas as TeX)
+    const used = {};
+    html = html.replace(/<h([1-6])>([\s\S]*?)<\/h\1>/g, (m, n, inner) => {
+      const text = decode(inner.replace(/<[^>]*>/g, '').replace(/XMATHX(\d+)XENDX/g, (x, i) => math[i].tex));
+      let id = text.trim().toLowerCase().replace(/[^\p{L}\p{N}\s_-]/gu, '').replace(/\s/g, '-');
+      if (id in used) id += '-' + (++used[id]); else used[id] = 0;
+      return `<h${n} id="doc-${id}">${inner}<a class="anchor" href="#physics/${id}" aria-label="Link to this section">#</a></h${n}>`;
+    });
+    // typeset the formulas
+    html = html.replace(/<p>\s*(XMATHX(\d+)XENDX)\s*<\/p>/g, (m, ph, i) => math[i].display ? ph : m);
+    html = html.replace(/XMATHX(\d+)XENDX/g, (m, i) => {
+      const { tex, display } = math[i];
+      const out = window.katex.renderToString(tex, { displayMode: display, throwOnError: false, strict: 'ignore' });
+      return display ? '<span class="math-display">' + out + '</span>' : out;
+    });
+    box.innerHTML = html;
+
+    // tables scroll inside a wrapper
+    $$('table', box).forEach(t => { const w = h('div', { class: 'table-scroll' }); t.replaceWith(w); w.append(t); });
+    // links: sections of this page, other files of the repository on GitHub
+    for (const a of $$('a[href]', box)) {
+      const href = a.getAttribute('href');
+      if (a.classList.contains('anchor')) continue;
+      if (href.startsWith('#')) { a.setAttribute('href', '#physics/' + href.slice(1)); continue; }
+      if (!/^[a-z][a-z0-9+.-]*:|^\/\//i.test(href)) {
+        const u = new URL(href, 'https://repo/docs/');   // relative to docs/
+        if (u.pathname === '/docs/physics.md') { a.setAttribute('href', '#physics' + (u.hash ? '/' + u.hash.slice(1) : '')); continue; }
+        a.href = this.repo + u.pathname.slice(1) + u.hash;
+      }
+      a.target = '_blank'; a.rel = 'noopener';
+    }
+    // images: docs/img/ is copied next to the static site; otherwise from GitHub
+    for (const img of $$('img', box)) {
+      const src = img.getAttribute('src') || '';
+      img.loading = 'lazy';
+      if (/^[a-z][a-z0-9+.-]*:|^\/\//i.test(src)) continue;
+      const path = new URL(src, 'https://repo/docs/').pathname;
+      img.src = LS && path.startsWith('/docs/img/') ? 'img/' + path.slice(10) : this.raw + path.slice(1);
+    }
+    box.addEventListener('click', ev => {
+      const a = ev.target.closest('a[href^="#physics"]');
+      if (!a || ev.ctrlKey || ev.metaKey || ev.shiftKey) return;
+      ev.preventDefault();
+      const id = a.getAttribute('href').split('/')[1];
+      history.replaceState(null, '', a.getAttribute('href'));
+      if (id) { this.pending = decodeURIComponent(id); this.scroll(); } else window.scrollTo(0, 0);
+    });
+    this.toc(box);
+  },
+
+  // compact table of contents (h2, h3) after the title
+  toc(box) {
+    const hs = $$('h2, h3', box);
+    if (hs.length < 3 || hs.some(x => /^(table of )?contents$/i.test(x.textContent.replace(/#$/, '').trim()))) return;
+    const top = h('ol');
+    let sub = null;
+    for (const x of hs) {
+      const c = x.cloneNode(true);
+      c.querySelectorAll('.anchor, .katex-mathml').forEach(e => e.remove());
+      const li = h('li', null, h('a', { href: x.querySelector('.anchor').getAttribute('href'), html: c.innerHTML }));
+      if (x.tagName === 'H2' || !top.lastChild) { top.append(li); sub = null; }
+      else { if (!sub) top.lastChild.append(sub = h('ol')); sub.append(li); }
+    }
+    const nav = h('details', { class: 'toc', open: !window.matchMedia('(max-width: 640px)').matches },
+      h('summary', null, 'Contents'), h('nav', null, top));
+    const h1 = box.querySelector('h1');
+    if (h1 && h1 === box.firstElementChild) h1.after(nav); else box.prepend(nav);
+  },
+};
+
 // ------------------------------------------------------------------ theme
 function initTheme() {
   const saved = (() => { try { return localStorage.getItem('lunasrim-theme'); } catch (e) { return null; } })();
@@ -1112,6 +1291,7 @@ function initTheme() {
 // ------------------------------------------------------------------- boot
 async function boot() {
   initTheme();
+  initTabs();   // before the engine starts: the Physics and About pages do not need it
   const loading = $('#loading');
   if (LS && loading) loading.classList.remove('hidden');
   try {
@@ -1126,7 +1306,6 @@ async function boot() {
   if (loading) loading.classList.add('hidden');
   Picker.build();
   SR.init(); IM.init(); EL.init(); Trim.init(); CMP.init();
-  initTabs();
   $('#about-version').textContent = S.info.static
     ? `lunasrim ${S.info.version} · running in your browser (Pyodide), no data leaves your computer`
     : `lunasrim ${S.info.version} · up to ${S.info.max_ions} ions per TRIM calculation on this server`;
