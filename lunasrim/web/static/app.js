@@ -26,7 +26,28 @@ function toast(msg, err) {
   toast._t = setTimeout(() => t.classList.add('hidden'), err ? 6000 : 2500);
 }
 
+// Static site (GitHub Pages): no server, lunasrim runs in the browser with
+// Pyodide in a web worker (pyworker.js) that answers the same /api/ requests.
+const LS = window.LUNASRIM_STATIC ? {
+  w: null, n: 0, pend: {},
+  base: new URL('.', location.href).href,
+  send(msg) {
+    if (!this.w) {
+      this.w = new Worker('pyworker.js');
+      this.w.onmessage = (ev) => { const p = this.pend[ev.data.id]; delete this.pend[ev.data.id]; if (p) p(ev.data); };
+    }
+    const id = ++this.n;
+    return new Promise(res => { this.pend[id] = res; this.w.postMessage(Object.assign({ id, base: this.base }, msg)); });
+  },
+} : null;
+
 async function api(path, body) {
+  if (LS) {
+    const r = await LS.send({ method: body === undefined ? 'GET' : 'POST', path, body: body === undefined ? '' : JSON.stringify(body) });
+    const data = JSON.parse(r.text);
+    if (r.status !== 200) throw new Error(data && data.detail ? String(data.detail) : 'error ' + r.status);
+    return data;
+  }
   const opt = body === undefined ? {} : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) };
   const r = await fetch(path, opt);
   let data = null;
@@ -826,9 +847,20 @@ const Trim = {
     // summary & files
     const sc = $('#tr-sum-cards'); sc.innerHTML = '';
     sc.append(card('Ions', r.ions), card('Projected range', fmtLen(sm.range), 'straggling ' + fmtLenAs(sm.straggling, sm.range)), card('Vacancies / ion', fmt(sm.vacancies, 4)), card('Backscattered', sm.backscattered), card('Transmitted', sm.transmitted), card('Sputtered', sm.sputtered));
-    $('#tr-zip').href = `/api/trim/${this.job}/files.zip`;
+    const job = this.job;
+    if (LS) {
+      $('#tr-zip').href = '#';
+      $('#tr-zip').onclick = async (ev) => {
+        ev.preventDefault();
+        const r = await LS.send({ kind: 'zip', job });
+        if (r.status !== 200) { toast(JSON.parse(r.text).detail, true); return; }
+        const a = h('a', { href: URL.createObjectURL(new Blob([r.bytes], { type: 'application/zip' })), download: `lunasrim_${job}.zip` });
+        a.click();
+      };
+    } else $('#tr-zip').href = `/api/trim/${job}/files.zip`;
     const ul = $('#tr-files'); ul.innerHTML = '';
-    for (const f of r.files) ul.append(h('li', null, h('a', { href: '#', onclick: async (ev) => { ev.preventDefault(); const t = await (await fetch(`/api/trim/${this.job}/file/${f}`)).text(); $('#tr-filepre').textContent = t; } }, f)));
+    const fileText = async (f) => LS ? (await LS.send({ kind: 'file', job, name: f })).text : (await fetch(`/api/trim/${job}/file/${f}`)).text();
+    for (const f of r.files) ul.append(h('li', null, h('a', { href: '#', onclick: async (ev) => { ev.preventDefault(); $('#tr-filepre').textContent = await fileText(f); } }, f)));
   },
 };
 
@@ -885,15 +917,24 @@ function initTheme() {
 // ------------------------------------------------------------------- boot
 async function boot() {
   initTheme();
+  const loading = $('#loading');
+  if (LS && loading) loading.classList.remove('hidden');
   try {
     const [els, comps, info] = await Promise.all([api('/api/elements'), api('/api/compounds'), api('/api/info')]);
     S.elements = els; S.compounds = comps; S.info = info;
     for (const e of els) { S.byZ[e.z] = e; S.bySym[e.symbol] = e; }
-  } catch (e) { toast('Cannot reach the LunaSRIM server: ' + e.message, true); return; }
+  } catch (e) {
+    toast((LS ? 'Cannot start the Python engine: ' : 'Cannot reach the LunaSRIM server: ') + e.message, true);
+    if (loading) loading.textContent = 'The Python engine could not be started: ' + e.message;
+    return;
+  }
+  if (loading) loading.classList.add('hidden');
   Picker.build();
   SR.init(); IM.init(); Trim.init(); CMP.init();
   initTabs();
-  $('#about-version').textContent = `lunasrim ${S.info.version} · up to ${S.info.max_ions} ions per TRIM calculation on this server`;
+  $('#about-version').textContent = S.info.static
+    ? `lunasrim ${S.info.version} · running in your browser (Pyodide), no data leaves your computer`
+    : `lunasrim ${S.info.version} · up to ${S.info.max_ions} ions per TRIM calculation on this server`;
   $('#tr-n').max = S.info.max_ions;
 }
 document.addEventListener('DOMContentLoaded', boot);

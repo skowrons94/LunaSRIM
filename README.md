@@ -20,8 +20,9 @@ pure Python (numpy is optional and only used by the result readers).
 
 A **web application** runs on top of the package: stopping and range
 tables, implantation profiles, TRIM Monte Carlo with trajectories and
-damage plots, and comparisons of stopping curves. See
-[Web application](#web-application).
+damage plots, and comparisons of stopping curves. It is online at
+**https://skowrons94.github.io/LunaSRIM/**, where the calculations run in
+your browser (no server). See [Web application](#web-application).
 
 ![TRIM trajectories in the web application](docs/img/trim_trajectories.png)
 
@@ -168,6 +169,26 @@ ion/target pairs, versus energy or energy per nucleon.
 The server limits the number of ions per TRIM calculation
 (`LUNASRIM_MAX_IONS`, default 100000) and the number of calculations that run
 at once (`LUNASRIM_MAX_JOBS`, default 2).
+
+### Online version (GitHub Pages)
+
+The same application is published as a static site at
+https://skowrons94.github.io/LunaSRIM/. The lunasrim package runs in the
+browser with [Pyodide](https://pyodide.org) (Python compiled to
+WebAssembly) inside a web worker, which answers the same `/api` requests as
+the FastAPI server, so nothing is computed on a server. The engine loads
+in a few seconds the first time; a TRIM calculation runs in slices so the
+progress and the cancel button keep working. Results are identical to the
+desktop package (the x87 math falls back to its exact pure-Python version).
+
+The site is built and deployed by `.github/workflows/pages.yml` on every
+push to `main` (in the repository settings, Pages → Source must be
+"GitHub Actions"). To build it locally:
+
+```sh
+python tools/build_static.py site      # downloads pyodide-core into site/pyodide
+python -m http.server -d site          # http://127.0.0.1:8000/
+```
 
 | | |
 |---|---|
@@ -330,7 +351,8 @@ for exact agreement:
   - `vbmath.py`: VB runtime math (x87 routines of msvbvm50.dll).
   - `tally.py`: distributions.
   - `compounds.py`: SRIM's compound dictionary.
-  - `web/`: the web application (FastAPI server and browser front end).
+  - `web/`: the web application (`core.py` logic, FastAPI server, Pyodide
+    entry point `pyodide_api.py`, and the browser front end).
   - `data/`: SRIM-2013 data files (`SCOEF03.DAT`, `SNUC03.dat`, `ATOMDATA`, `Compound.dat`; (c) J. F. Ziegler).
 - `scripts/`: example calculations.
 - `tests/`: regression tests against TRIM.exe and SRModule.exe.

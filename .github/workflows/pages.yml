@@ -1,0 +1,49 @@
+# Static LunaSRIM website on GitHub Pages: the lunasrim package runs in the
+# visitor's browser with Pyodide (tools/build_static.py), no server needed.
+# One-time setup: Settings -> Pages -> Build and deployment -> Source: GitHub Actions.
+name: Deploy website
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Tests (SR module and web API)
+        run: |
+          pip install fastapi httpx
+          python -m unittest tests.test_sr tests.test_web tests.test_vbmath
+      - name: Build the static site
+        run: |
+          sh tools/fetch_web_vendor.sh
+          python tools/build_static.py site
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
