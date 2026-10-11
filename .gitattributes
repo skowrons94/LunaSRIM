@@ -3,3 +3,9 @@
 tests/reference/** -text
 tests/reference_sr/** -text
 lunasrim/data/** -text
+# Documentation and web files: LF everywhere (the web server serves the
+# packaged docs file byte for byte)
+*.md text eol=lf
+*.html text eol=lf
+*.js text eol=lf
+*.css text eol=lf
