@@ -1,0 +1,86 @@
+# Release: push a tag such as v1.0.0.
+#   build           sdist + wheel, smoke test of the wheel in a fresh venv
+#   github-release  GitHub release for the tag, with the dist files and the
+#                   CHANGELOG section of the version as notes
+#   pypi            upload to PyPI by trusted publishing (configure it once on
+#                   pypi.org: project lunasrim -> Publishing -> GitHub, workflow
+#                   release.yml, environment pypi); independent of github-release
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check the version
+        run: |
+          v=$(python -c "import lunasrim; print(lunasrim.__version__)")
+          echo "package version $v, tag $GITHUB_REF_NAME"
+          test "v$v" = "$GITHUB_REF_NAME"
+      - name: JavaScript libraries for the offline web application
+        run: sh tools/fetch_web_vendor.sh || echo "not bundled; the web application will use the CDN"
+      - name: Build
+        run: |
+          python -m pip install --upgrade pip build
+          python -m build
+          ls -l dist
+      - name: Test the wheel in a fresh venv
+        run: |
+          python -m venv /tmp/venv
+          /tmp/venv/bin/pip install dist/*.whl
+          cd /tmp
+          /tmp/venv/bin/lunasrim --version
+          /tmp/venv/bin/lunasrim stopping H Si
+          /tmp/venv/bin/lunasrim eloss H Si --energy 400keV --thickness 1um
+          /tmp/venv/bin/python -c "import lunasrim; print(lunasrim.energy_loss('H', 'Si', energy=400, thickness=1, unit='um')['sigma'])"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  github-release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - name: Release notes from CHANGELOG.md
+        run: |
+          v="${GITHUB_REF_NAME#v}"
+          awk -v v="$v" '
+            /^## \[/ { if (on) exit; if (index($0, "## [" v "]") == 1) { on = 1; next } }
+            on { print }
+          ' CHANGELOG.md > notes.md
+          test -s notes.md || echo "LunaSRIM $v" > notes.md
+          cat notes.md
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/* --title "LunaSRIM ${GITHUB_REF_NAME#v}" --notes-file notes.md
+
+  pypi:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/lunasrim/
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1

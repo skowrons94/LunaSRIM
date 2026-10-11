@@ -1,3 +1,11 @@
 .git
-output
+.github
 **/__pycache__
+*.egg-info
+build
+dist
+output
+lunasrim_output
+site
+tests/reference
+tests/reference_sr

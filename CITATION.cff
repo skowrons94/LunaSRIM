@@ -1,0 +1,41 @@
+cff-version: 1.2.0
+message: "If you use LunaSRIM, please cite it as below, and cite SRIM."
+title: LunaSRIM
+abstract: >-
+  A pure Python 3 re-implementation of SRIM-2013 (TRIM Monte Carlo and
+  stopping and range tables), reverse engineered to reproduce the original
+  programs digit for digit.
+type: software
+version: 1.0.0
+date-released: "2026-10-11"
+authors:
+  - family-names: Skowronski
+    given-names: Jakub
+    email: jakub.skowronski@protonmail.com
+repository-code: "https://github.com/skowrons94/LunaSRIM"
+url: "https://skowrons94.github.io/LunaSRIM/"
+license: MIT
+keywords:
+  - SRIM
+  - TRIM
+  - stopping power
+  - ion range
+  - Monte Carlo
+  - ion implantation
+references:
+  - type: article
+    title: "SRIM – The stopping and range of ions in matter (2010)"
+    authors:
+      - family-names: Ziegler
+        given-names: James F.
+      - family-names: Ziegler
+        given-names: M. D.
+      - family-names: Biersack
+        given-names: J. P.
+    journal: "Nuclear Instruments and Methods in Physics Research Section B: Beam Interactions with Materials and Atoms"
+    volume: 268
+    issue: "11-12"
+    start: 1818
+    end: 1823
+    year: 2010
+    doi: 10.1016/j.nimb.2010.02.091

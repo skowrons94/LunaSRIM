@@ -1,28 +1,57 @@
 [build-system]
-requires = ["setuptools>=61"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "lunasrim"
-version = "0.1.0"
-description = "Python 3 re-implementation of SRIM-2013 (TRIM Monte Carlo and stopping powers)"
+dynamic = ["version"]
+description = "Pure Python 3 re-implementation of SRIM-2013: TRIM Monte Carlo and stopping/range tables, reproduced digit for digit"
 readme = "README.md"
-requires-python = ">=3.6"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Jakub Skowronski", email = "jakub.skowronski@protonmail.com" }]
+requires-python = ">=3.9"
+dependencies = []
+keywords = [
+    "SRIM", "TRIM", "stopping power", "ion range", "ion implantation", "Monte Carlo",
+    "energy loss", "straggling", "radiation damage", "nuclear physics",
+]
 classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering :: Physics",
 ]
 
+[project.urls]
+Homepage = "https://github.com/skowrons94/LunaSRIM"
+Documentation = "https://github.com/skowrons94/LunaSRIM/tree/main/docs"
+"Web application" = "https://skowrons94.github.io/LunaSRIM/"
+Issues = "https://github.com/skowrons94/LunaSRIM/issues"
+Changelog = "https://github.com/skowrons94/LunaSRIM/blob/main/CHANGELOG.md"
+
 [project.optional-dependencies]
 numpy = ["numpy"]
-web = ["fastapi", "uvicorn", "numpy"]
+web = ["fastapi", "uvicorn"]
 
 [project.scripts]
 lunasrim = "lunasrim.__main__:main"
 
-[tool.setuptools]
-packages = ["lunasrim", "lunasrim.web"]
+[tool.setuptools.packages.find]
+include = ["lunasrim", "lunasrim.*"]
+
+[tool.setuptools.dynamic]
+version = { attr = "lunasrim.__version__" }
 
 [tool.setuptools.package-data]
 lunasrim = ["data/*"]
-"lunasrim.web" = ["static/*", "static/vendor/*"]
+# static/* covers index.html, app.js, style.css, pyworker.js and physics.md;
+# vendor/ holds the optional local copies of plotly.js, marked and KaTeX
+"lunasrim.web" = ["static/*", "static/vendor/*", "static/**/*"]

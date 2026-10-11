@@ -2,6 +2,9 @@ __pycache__/
 *.pyc
 *.egg-info/
 build/
+dist/
 output/
+lunasrim_output/
 lunasrim/web/static/vendor/
 site/
+.venv/

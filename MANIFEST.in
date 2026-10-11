@@ -1,0 +1,14 @@
+# Source distribution: the package, its data, documentation and examples.
+# Not included: tests/ (with the TRIM.exe / SRModule.exe reference outputs,
+# about 8 MB) and the reverse-engineering helpers in tools/.
+include LICENSE README.md CHANGELOG.md CITATION.cff
+recursive-include lunasrim/data *
+recursive-include lunasrim/web/static *
+recursive-include docs *.md
+recursive-include examples *.py *.md
+prune tests
+prune tools
+prune output
+prune site
+prune dist
+prune build

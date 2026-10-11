@@ -1,0 +1,5 @@
+# SRIM input and output files are compared byte for byte (CRLF line ends
+# as written by TRIM.exe and SRModule.exe): never convert line endings.
+tests/reference/** -text
+tests/reference_sr/** -text
+lunasrim/data/** -text
