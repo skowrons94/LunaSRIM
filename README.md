@@ -178,8 +178,10 @@ browser with [Pyodide](https://pyodide.org) (Python compiled to
 WebAssembly) inside a web worker, which answers the same `/api` requests as
 the FastAPI server, so nothing is computed on a server. The engine loads
 in a few seconds the first time; a TRIM calculation runs in slices so the
-progress and the cancel button keep working. Results are identical to the
-desktop package (the x87 math falls back to its exact pure-Python version).
+progress and the cancel button keep working. Without native x87 code the
+math uses its pure-Python version; in the browser 45 of the 46 TRIM
+reference cases are identical to TRIM.exe, and the other (HPbLong) differs
+in one line of LATERAL.txt.
 
 The site is built and deployed by `.github/workflows/pages.yml` on every
 push to `main` (in the repository settings, Pages → Source must be
