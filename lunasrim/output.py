@@ -392,7 +392,8 @@ class TrimOutput(object):
 
     def transmitted(self, ion, st):
         """0x440300"""
-        if 'trans' not in self.files and 'out' not in self.files:
+        # TRIMOUT.txt only gets the atoms whose own file is written
+        if 'trans' not in self.files:
             return
         line = self.atom_line('T', ion, self.ti.ion_z, st.e, st.x, st.y, st.z,
                               cos_string(st.cx, -0.999999), cos_string(st.cy), cos_string(st.cz))
@@ -403,6 +404,8 @@ class TrimOutput(object):
 
     def backscattered(self, ion, st):
         """0x43d850"""
+        if 'back' not in self.files:
+            return
         line = self.atom_line('B', ion, self.ti.ion_z, st.e, st.x, st.y, st.z,
                               cos_string(st.cx, -0.999999), cos_string(st.cy), cos_string(st.cz))
         if 'back' in self.files:
