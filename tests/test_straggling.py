@@ -38,6 +38,20 @@ class TestStraggling(unittest.TestCase):
         s = r['profile']['se'][0] + r['profile']['sn'][0]
         self.assertAlmostEqual(r['energy_loss'] / (s * 50 / 1000), 1, delta=0.01)
 
+    def test_compound_correction_once(self):
+        # S(E) equals the SR module's table (correction applied once, not
+        # twice as in the SR module's list mode)
+        from lunasrim import sr
+        from lunasrim.straggling import _Stopping
+        els = [(1, 2, 1.008), (8, 1, 15.999)]
+        rows = sr.stopping_table(1, 1.008, els, 1.0, 10, 1000, correction=0.9, units=1)
+        si = sr.SrInput()
+        si.ion_z, si.ion_mass, si.density, si.phase, si.correction, si.units = 1, 1.008, 1.0, 0, 0.9, 1
+        si.elements = [sr.SrElement(z, '', st, m) for z, st, m in els]
+        stop = _Stopping(si, 5, 2000)
+        for e, se, sn, rp, lon, lat in rows:
+            self.assertAlmostEqual(stop(e)[0] / se, 1, delta=2e-5)
+
     def test_ions_stop(self):
         r = energy_loss(2, 4.003, 100, SI, 2.3212, 10, 'um')
         self.assertTrue(r['stopped'])

@@ -160,10 +160,11 @@ def fade_correction(factor, e_per_u, z1=1):
     fades out at high velocity (around 1.2 MeV/u for protons, 400 keV/u for
     heavier ions).  SRIM evaluates Exp(x) for every target, which overflows
     above 5.92 GeV/u (VBOverflow)."""
-    x = 1.48 * (_sqrt(e_per_u / 25.0) - (7.0 if z1 == 1 else 4.0))
+    c = 7.0 if z1 == 1 else 4.0
+    x = 1.48 * (_sqrt(e_per_u / 25.0) - c)
     if x > LN_DBL_MAX:
         raise VBOverflow('Exp overflow in the phase correction: SRIM stops with run-time error 6 '
-                         '(Overflow) above %.4g keV/u' % (25 * (7.0 + LN_DBL_MAX / 1.48) ** 2))
+                         '(Overflow) above %.4g keV/u' % (25 * (c + LN_DBL_MAX / 1.48) ** 2))
     if x > 700:
         return 1.0
     return 1.0 + (factor - 1.0) / (1.0 + _exp(x))

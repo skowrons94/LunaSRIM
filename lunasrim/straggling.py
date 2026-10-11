@@ -31,6 +31,7 @@ calculation (transmitted ions, TRANSMIT.txt) shows in full.
 import math
 
 from . import sr
+from .stopping import VBOverflow, electronic_stopping, nuclear_stopping
 
 E2 = 14.39964            # e^2 in eV*A
 BOHR_K = 4 * math.pi * E2 * E2      # 4 pi e^4, eV^2 A^2
@@ -50,17 +51,27 @@ class _Stopping(object):
         si.emin = si.emax = 0
         n = max(20, int(math.ceil(math.log10(emax / emin) * per_decade)) + 1)
         r = (emax / emin) ** (1.0 / (n - 1))
-        si.energies = [emin * r ** i for i in range(n)]
-        try:
-            lst = sr.StoppingList(si)
-            lst.calculate()
-        except sr.SrError as ex:
-            raise StragglingError(str(ex))
-        f = lst.table.unit_factor[1]                  # eV/A
-        self.table = lst.table
-        self.lnE = [math.log(e) for e, se, sn in lst.rows]
-        self.lnSe = [math.log(max(f * se, 1e-300)) for e, se, sn in lst.rows]
-        self.lnSn = [math.log(max(f * sn, 1e-300)) for e, se, sn in lst.rows]
+        energies = [emin * r ** i for i in range(n)]
+        # Bragg's rule with the compound correction applied once, as in the
+        # SR module's tables and in TRIM (the SR module's list mode,
+        # sr.StoppingList, applies it a second time)
+        table = sr.StoppingTable(si)                  # composition, unit factors
+        rows = []
+        for e in energies:
+            se = sn = 0.0
+            for frac, el in zip(table.frac, si.elements):
+                try:
+                    se += frac * electronic_stopping(si.ion_z, si.ion_mass, el.z, e, si.phase,
+                                                     corr=si.correction) * 10
+                except VBOverflow as ex:
+                    raise StragglingError(str(ex))
+                sn += frac * nuclear_stopping(si.ion_z, si.ion_mass, el.z, el.mass, e) * 10
+            rows.append((e, se, sn))
+        f = table.unit_factor[1]                      # eV/A
+        self.table = table
+        self.lnE = [math.log(e) for e, se, sn in rows]
+        self.lnSe = [math.log(max(f * se, 1e-300)) for e, se, sn in rows]
+        self.lnSn = [math.log(max(f * sn, 1e-300)) for e, se, sn in rows]
         self.h = math.log(r)
 
     def _interp(self, tab, e):
