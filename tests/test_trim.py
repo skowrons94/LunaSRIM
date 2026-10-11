@@ -23,7 +23,13 @@ KNOWN = {}
 try:
     from lunasrim import vbmath as _vbmath
     if not _vbmath.NATIVE:
+        # Python's math module (the C library) instead of the x87 routines;
+        # the counts are upper limits
         KNOWN = {'HPbLong': {'LATERAL.txt': 1}}
+        if sys.platform == 'win32':
+            # the Microsoft C runtime rounds a few results differently from
+            # glibc and macOS: last digit of two lateral spread values
+            KNOWN['XeSiHigh'] = {'LATERAL.txt': 2}
 except ImportError:
     pass
 
