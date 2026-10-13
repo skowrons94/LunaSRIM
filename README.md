@@ -111,7 +111,7 @@ To cite lunasrim itself, use the metadata in [CITATION.cff](https://github.com/s
 
 ## License
 
-The lunasrim code is released under the MIT license ([LICENSE](https://github.com/skowrons94/LunaSRIM/blob/main/LICENSE)). The SRIM-2013 data files in `lunasrim/data` (`SCOEF03.DAT`, `SNUC03.dat`, `ATOMDATA`, `Compound.dat`) are by J. F. Ziegler and remain under the terms of the SRIM authors.
+The lunasrim code is released under the MIT license ([LICENSE](https://github.com/skowrons94/LunaSRIM/blob/main/LICENSE)). The SRIM-2013 data files in `lunasrim/data` (`SCOEF03.DAT`, `SNUC03.dat`, `ATOMDATA`, `Compound.dat`) are by J. F. Ziegler and remain under the terms of the SRIM authors. Those terms allow SRIM to be copied and distributed freely for personal, non-commercial use, and exclude commercial use of SRIM, its files or its results without a written license from SRIM.org. lunasrim depends on these files, so use lunasrim for non-commercial research and teaching only, unless you hold such a license.
 
 ## Acknowledgements
 
